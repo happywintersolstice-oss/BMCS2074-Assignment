@@ -5,9 +5,10 @@ This is a simple Streamlit prototype for detecting whether a text message or web
 ## Features
 
 - Python + Streamlit web app
-- Two NLP models:
+- 3 NLP models:
   - Multinomial Naive Bayes
   - Support Vector Machine (SVM)
+  - Logistic Regression
 - TF-IDF feature extraction
 - Basic text preprocessing:
   - lowercase
