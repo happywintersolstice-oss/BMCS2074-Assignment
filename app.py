@@ -1,9 +1,10 @@
 """
 Streamlit prototype for scam/spam message detection.
 
-The app trains two simple NLP models on startup:
+The app trains three simple NLP models on startup:
 - Naive Bayes
 - Support Vector Machine (SVM)
+- Logistic Regression
 
 It supports:
 - message analysis
@@ -23,6 +24,7 @@ import requests
 import streamlit as st
 from bs4 import BeautifulSoup
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import MultinomialNB
@@ -32,6 +34,7 @@ from sklearn.svm import SVC
 
 # DATA_PATH points to the demo dataset bundled with this project.
 DATA_PATH = Path("data/raw/sms_spam_demo.csv")
+MODEL_OPTIONS = ["Naive Bayes", "SVM", "Logistic Regression"]
 
 
 def preprocess_text(text: str) -> str:
@@ -70,8 +73,10 @@ def build_pipeline(model_name: str) -> Any:
     """
     if model_name == "Naive Bayes":
         classifier = MultinomialNB()
-    else:
+    elif model_name == "SVM":
         classifier = SVC(kernel="linear", probability=True, random_state=42)
+    else:
+        classifier = LogisticRegression(max_iter=1000, random_state=42)
 
     return Pipeline(
         [
@@ -84,7 +89,7 @@ def build_pipeline(model_name: str) -> Any:
 @st.cache_resource
 def train_models() -> tuple[dict[str, Any], pd.DataFrame]:
     """
-    Train both models once and cache the result.
+    Train all models once and cache the result.
 
     Returns:
     - trained models
@@ -106,7 +111,7 @@ def train_models() -> tuple[dict[str, Any], pd.DataFrame]:
     models: dict[str, Any] = {}
     metrics_rows: list[dict[str, float | str]] = []
 
-    for model_name in ["Naive Bayes", "SVM"]:
+    for model_name in MODEL_OPTIONS:
         pipeline = build_pipeline(model_name)
         pipeline.fit(x_train, y_train)
         predictions = pipeline.predict(x_test)
@@ -185,7 +190,7 @@ def show_message_analysis(models: dict[str, Any]) -> None:
     st.subheader("Message Analysis")
     st.write("Paste a message and choose which NLP model should analyze it.")
 
-    model_choice = st.selectbox("Choose a model", ["Naive Bayes", "SVM"])
+    model_choice = st.selectbox("Choose a model", MODEL_OPTIONS)
     message = st.text_area(
         "Enter a message",
         height=180,
@@ -215,7 +220,7 @@ def show_url_analysis(models: dict[str, Any]) -> None:
     st.subheader("URL Analysis")
     st.write("Enter a URL to extract the web page text and analyze whether it looks suspicious.")
 
-    model_choice = st.selectbox("Choose a model for URL analysis", ["Naive Bayes", "SVM"])
+    model_choice = st.selectbox("Choose a model for URL analysis", MODEL_OPTIONS)
     url = st.text_input(
         "Enter a URL",
         placeholder="https://example.com",
@@ -254,7 +259,7 @@ def show_model_comparison(metrics_df: pd.DataFrame) -> None:
     Render the model comparison table.
     """
     st.subheader("Model Comparison")
-    st.write("This table compares the two models using the current demo dataset.")
+    st.write("This table compares the three models using the current demo dataset.")
 
     formatted_df = metrics_df.copy()
     for column in ["Accuracy", "Precision", "Recall", "F1 Score"]:
@@ -274,7 +279,7 @@ def main() -> None:
 
     st.title("AI-Powered Scam Message and Suspicious Web Content Detection Using NLP")
     st.write(
-        "This prototype uses TF-IDF with Naive Bayes and SVM to classify text as scam/spam or legitimate."
+        "This prototype uses TF-IDF with Naive Bayes, SVM, and Logistic Regression to classify text as scam/spam or legitimate."
     )
 
     models, metrics_df = train_models()
