@@ -11,7 +11,7 @@ import streamlit as st
 
 from src.constants import APP_TITLE, MODEL_NAMES
 from src.data_loader import load_dataset
-from src.modeling import predict_text, train_models
+from src.modeling import explain_prediction, train_models
 from src.web_tools import extract_text_from_url
 
 
@@ -62,11 +62,11 @@ def apply_theme() -> None:
         }
         .block-container {
             max-width: 980px;
-            padding-top: 2.25rem;
-            padding-bottom: 2rem;
+            padding-top: 1.25rem;
+            padding-bottom: 1.5rem;
         }
         .page-header {
-            margin-bottom: 1rem;
+            margin-bottom: 0.55rem;
         }
         .page-header h1 {
             margin: 0 0 0.35rem 0;
@@ -85,7 +85,7 @@ def apply_theme() -> None:
             background: rgba(248, 252, 255, 0.96);
             border: 1px solid rgba(88, 139, 188, 0.14);
             border-radius: 14px;
-            padding: 0.85rem 0.95rem;
+            padding: 0.7rem 0.85rem;
             box-shadow: none;
         }
         .mini-stat-label {
@@ -114,6 +114,38 @@ def apply_theme() -> None:
         .soft-note strong {
             color: #1f3d57;
         }
+        .result-card {
+            background: rgba(248, 252, 255, 0.98);
+            border: 1px solid rgba(88, 139, 188, 0.16);
+            border-radius: 16px;
+            padding: 1rem 1.1rem;
+        }
+        .result-card h4 {
+            margin: 0 0 0.35rem 0;
+            color: #34506a;
+            font-size: 0.92rem;
+            font-weight: 600;
+        }
+        .result-value {
+            color: #14324d;
+            font-size: 1.65rem;
+            font-weight: 700;
+            line-height: 1.05;
+        }
+        .explanation-list {
+            margin-top: 0.4rem;
+            color: #506b82;
+        }
+        .token-chip {
+            display: inline-block;
+            margin: 0.2rem 0.35rem 0 0;
+            padding: 0.28rem 0.6rem;
+            border-radius: 999px;
+            background: rgba(215, 236, 252, 0.9);
+            border: 1px solid rgba(88, 139, 188, 0.16);
+            color: #27506f;
+            font-size: 0.86rem;
+        }
         div[data-testid="stSidebar"] {
             background: #f7fbff;
             border-right: 1px solid rgba(88, 139, 188, 0.08);
@@ -129,6 +161,48 @@ def apply_theme() -> None:
         }
         div[data-testid="stTabs"] button[aria-selected="true"] {
             color: #2f79b7;
+        }
+        details[data-testid="stExpander"] {
+            border: 1px solid rgba(88, 139, 188, 0.12);
+            border-radius: 14px;
+            background: rgba(250, 253, 255, 0.92);
+            overflow: hidden;
+        }
+        div[data-testid="stExpander"] {
+            border: 1px solid rgba(88, 139, 188, 0.12);
+            border-radius: 14px;
+            background: rgba(250, 253, 255, 0.92);
+            overflow: hidden;
+        }
+        details[data-testid="stExpander"] summary {
+            background: rgba(244, 250, 255, 0.96);
+            color: #2f79b7 !important;
+            border-radius: 14px;
+        }
+        div[data-testid="stExpander"] summary {
+            background: rgba(244, 250, 255, 0.96) !important;
+            color: #2f79b7 !important;
+            border-radius: 14px;
+        }
+        details[data-testid="stExpander"] summary:hover {
+            background: rgba(232, 244, 255, 0.98);
+            color: #235f94 !important;
+        }
+        div[data-testid="stExpander"] summary:hover {
+            background: rgba(232, 244, 255, 0.98) !important;
+            color: #235f94 !important;
+        }
+        details[data-testid="stExpander"] summary span,
+        details[data-testid="stExpander"] summary p,
+        details[data-testid="stExpander"] summary div {
+            color: inherit !important;
+        }
+        div[data-testid="stExpander"] summary span,
+        div[data-testid="stExpander"] summary p,
+        div[data-testid="stExpander"] summary div,
+        div[data-testid="stExpander"] summary svg {
+            color: inherit !important;
+            fill: currentColor !important;
         }
         .stButton > button {
             background: #4f97d1;
@@ -149,6 +223,13 @@ def apply_theme() -> None:
         }
         .stSelectbox label, .stTextInput label, .stTextArea label {
             color: #5b7389 !important;
+        }
+        .stMarkdown h2 {
+            margin-top: 0.15rem;
+            margin-bottom: 0.55rem;
+        }
+        .stMarkdown p {
+            margin-bottom: 0.55rem;
         }
         </style>
         """,
@@ -232,21 +313,21 @@ def render_message_page(models: dict[str, Any]) -> None:
     """
     Render the text message analysis page.
     """
-    left, right = st.columns([1.35, 0.65], gap="large")
+    top_left, top_right = st.columns([1.35, 0.65], gap="large")
 
-    with left:
+    with top_left:
         st.subheader("Analyze a Message")
-        st.write("Paste a suspicious message, SMS, or email text below.")
+        st.caption("Paste a suspicious message, SMS, or email text below.")
         message = st.text_area(
             "Message",
-            height=190,
+            height=120,
             placeholder="Example: Your bank account has been suspended. Verify now using this secure link...",
             label_visibility="collapsed",
         )
         model_choice = render_model_picker("Choose a model", "message_model")
         analyze = st.button("Analyze", use_container_width=True, type="primary")
 
-    with right:
+    with top_right:
         st.subheader("Before You Start")
         st.markdown(
             """
@@ -263,18 +344,48 @@ def render_message_page(models: dict[str, Any]) -> None:
             st.warning("Please enter a message before clicking Analyze.")
             return
 
-        prediction, confidence = predict_text(models[model_choice], message)
+        result = explain_prediction(models[model_choice], message)
 
-        st.markdown("### Result")
-        result_col, meta_col = st.columns([1.0, 0.9], gap="large")
+        result_col, meta_col = st.columns([1.05, 0.95], gap="large")
         with result_col:
-            if prediction == "Scam/Spam":
-                st.error(f"Prediction: {prediction}")
+            st.markdown("### Result")
+            if result["label"] == "Scam/Spam":
+                st.error(f"Prediction: {result['label']}")
             else:
-                st.success(f"Prediction: {prediction}")
+                st.success(f"Prediction: {result['label']}")
         with meta_col:
-            st.metric("Confidence", f"{confidence:.2%}")
+            st.markdown("### Confidence")
+            st.markdown(
+                f"""
+                <div class="result-card">
+                    <div class="result-value">{result["confidence"]:.2%}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
             st.caption(f"Model used: {model_choice}")
+
+        with st.expander("See why the app gave this result"):
+            explanation_left, explanation_right = st.columns([1.0, 1.0], gap="large")
+            with explanation_left:
+                st.markdown("**Cleaned text used by the model**")
+                st.code(result["cleaned_text"] or "(no usable words after cleaning)", language=None)
+            with explanation_right:
+                st.markdown("**Top TF-IDF terms noticed in this message**")
+                if result["top_terms"]:
+                    chips = "".join(f'<span class="token-chip">{term}</span>' for term in result["top_terms"])
+                    st.markdown(chips, unsafe_allow_html=True)
+                else:
+                    st.caption("No strong terms were found after preprocessing.")
+                st.markdown(
+                    """
+                    <div class="explanation-list">
+                        The result comes from the cleaned words in the message, their TF-IDF weights,
+                        and the selected model's learned decision pattern.
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
 
 def render_url_page(models: dict[str, Any]) -> None:
@@ -294,7 +405,7 @@ def render_url_page(models: dict[str, Any]) -> None:
 
         try:
             extracted_text = extract_text_from_url(url)
-            prediction, confidence = predict_text(models[model_choice], extracted_text)
+            result = explain_prediction(models[model_choice], extracted_text)
 
             preview_col, result_col = st.columns([1.25, 0.75], gap="large")
             with preview_col:
@@ -304,12 +415,39 @@ def render_url_page(models: dict[str, Any]) -> None:
 
             with result_col:
                 st.subheader("Prediction")
-                if prediction == "Scam/Spam":
-                    st.error(f"Prediction: {prediction}")
+                if result["label"] == "Scam/Spam":
+                    st.error(f"Prediction: {result['label']}")
                 else:
-                    st.success(f"Prediction: {prediction}")
-                st.metric("Confidence", f"{confidence:.2%}")
+                    st.success(f"Prediction: {result['label']}")
+                st.markdown(
+                    f"""
+                    <div class="result-card">
+                        <h4>Confidence</h4>
+                        <div class="result-value">{result["confidence"]:.2%}</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
                 st.caption(f"Model used: {model_choice}")
+
+            with st.expander("See why the app gave this result"):
+                st.markdown("**Cleaned text used by the model**")
+                st.code(result["cleaned_text"] or "(no usable words after cleaning)", language=None)
+                st.markdown("**Top TF-IDF terms noticed on this page**")
+                if result["top_terms"]:
+                    chips = "".join(f'<span class="token-chip">{term}</span>' for term in result["top_terms"])
+                    st.markdown(chips, unsafe_allow_html=True)
+                else:
+                    st.caption("No strong terms were found after preprocessing.")
+                st.markdown(
+                    """
+                    <div class="explanation-list">
+                        The result comes from the cleaned webpage text, its TF-IDF weights,
+                        and the selected model's learned decision pattern.
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
         except Exception as error:
             st.warning("The app could not extract readable content from that URL. Try another page or check the link.")
             st.caption(f"Technical detail: {error}")

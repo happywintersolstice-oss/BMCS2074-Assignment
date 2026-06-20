@@ -83,9 +83,9 @@ def train_models() -> tuple[dict[str, Any], pd.DataFrame]:
     return models, pd.DataFrame(metrics_rows)
 
 
-def predict_text(model: Any, raw_text: str) -> tuple[str, float]:
+def explain_prediction(model: Any, raw_text: str) -> dict[str, Any]:
     """
-    Predict the label for a message or extracted webpage text.
+    Predict the label for a message or extracted webpage text and explain it.
     """
     cleaned = preprocess_text(raw_text)
     prediction = model.predict([cleaned])[0]
@@ -95,5 +95,30 @@ def predict_text(model: Any, raw_text: str) -> tuple[str, float]:
         probabilities = model.predict_proba([cleaned])[0]
         confidence = float(max(probabilities))
 
+    tfidf = model.named_steps["tfidf"]
+    transformed = tfidf.transform([cleaned])
+    feature_names = tfidf.get_feature_names_out()
+    non_zero_indices = transformed.nonzero()[1]
+
+    weighted_terms: list[tuple[str, float]] = []
+    for index in non_zero_indices:
+        weighted_terms.append((feature_names[index], float(transformed[0, index])))
+
+    weighted_terms.sort(key=lambda item: item[1], reverse=True)
+    top_terms = [term for term, _ in weighted_terms[:5]]
+
     display_label = "Scam/Spam" if prediction == "spam" else "Legitimate"
-    return display_label, confidence
+    return {
+        "label": display_label,
+        "confidence": confidence,
+        "cleaned_text": cleaned,
+        "top_terms": top_terms,
+    }
+
+
+def predict_text(model: Any, raw_text: str) -> tuple[str, float]:
+    """
+    Backward-compatible helper for simple prediction usage.
+    """
+    result = explain_prediction(model, raw_text)
+    return result["label"], result["confidence"]
