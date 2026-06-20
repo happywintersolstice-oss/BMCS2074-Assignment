@@ -1,0 +1,338 @@
+"""
+Presentation layer for the Streamlit app.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+import pandas as pd
+import streamlit as st
+
+from src.constants import APP_TITLE, MODEL_NAMES
+from src.data_loader import load_dataset
+from src.modeling import predict_text, train_models
+from src.web_tools import extract_text_from_url
+
+
+def render_app() -> None:
+    """
+    Render the full Streamlit application.
+    """
+    apply_theme()
+
+    try:
+        models, metrics_df = train_models()
+        dataset = load_dataset()
+    except Exception as error:
+        st.error("The app could not start because dataset loading or model setup failed.")
+        st.code(str(error))
+        st.stop()
+
+    render_header(dataset)
+    render_sidebar()
+
+    message_tab, url_tab, comparison_tab, dataset_tab = st.tabs(
+        ["Message Analysis", "URL Analysis", "Model Comparison", "Dataset Preview"]
+    )
+
+    with message_tab:
+        render_message_page(models)
+    with url_tab:
+        render_url_page(models)
+    with comparison_tab:
+        render_comparison_page(metrics_df)
+    with dataset_tab:
+        render_dataset_page(dataset)
+
+
+def apply_theme() -> None:
+    """
+    Replace the default Streamlit look with a cleaner visual style.
+    """
+    st.markdown(
+        """
+        <style>
+        .stApp {
+            background:
+                radial-gradient(circle at top left, #dcefff 0%, transparent 24%),
+                radial-gradient(circle at top right, #edf7ff 0%, transparent 22%),
+                linear-gradient(180deg, #f6fbff 0%, #ffffff 100%);
+            color: #1d2d3d;
+        }
+        .block-container {
+            max-width: 980px;
+            padding-top: 2.25rem;
+            padding-bottom: 2rem;
+        }
+        .page-header {
+            margin-bottom: 1rem;
+        }
+        .page-header h1 {
+            margin: 0 0 0.35rem 0;
+            font-size: 2rem;
+            line-height: 1.06;
+            letter-spacing: -0.02em;
+            color: #1a3148;
+        }
+        .page-header p {
+            margin: 0;
+            max-width: 760px;
+            color: #59738b;
+            font-size: 0.98rem;
+        }
+        .mini-stat {
+            background: rgba(248, 252, 255, 0.96);
+            border: 1px solid rgba(88, 139, 188, 0.14);
+            border-radius: 14px;
+            padding: 0.85rem 0.95rem;
+            box-shadow: none;
+        }
+        .mini-stat-label {
+            color: #67819a;
+            font-size: 0.82rem;
+        }
+        .mini-stat-value {
+            color: #1e3952;
+            font-size: 1.35rem;
+            font-weight: 650;
+        }
+        .section-card {
+            background: rgba(250, 253, 255, 0.97);
+            border: 1px solid rgba(88, 139, 188, 0.12);
+            border-radius: 16px;
+            padding: 1rem;
+            box-shadow: none;
+        }
+        .soft-note {
+            background: rgba(225, 241, 255, 0.72);
+            border-radius: 14px;
+            border: 1px solid rgba(88, 139, 188, 0.12);
+            padding: 0.9rem 1rem;
+            color: #486276;
+        }
+        .soft-note strong {
+            color: #1f3d57;
+        }
+        div[data-testid="stSidebar"] {
+            background: #f7fbff;
+            border-right: 1px solid rgba(88, 139, 188, 0.08);
+        }
+        div[data-testid="stMetric"] {
+            background: rgba(248, 252, 255, 0.95);
+            border: 1px solid rgba(88, 139, 188, 0.14);
+            padding: 0.9rem 1rem;
+            border-radius: 16px;
+        }
+        div[data-testid="stTabs"] button {
+            color: #627c95;
+        }
+        div[data-testid="stTabs"] button[aria-selected="true"] {
+            color: #2f79b7;
+        }
+        .stButton > button {
+            background: #4f97d1;
+            color: white;
+            border: none;
+            border-radius: 999px;
+            padding: 0.55rem 1.15rem;
+            font-weight: 600;
+        }
+        .stButton > button:hover {
+            background: #3f86bf;
+            color: white;
+        }
+        .stButton > button p,
+        .stButton > button span,
+        .stButton > button div {
+            color: #ffffff !important;
+        }
+        .stSelectbox label, .stTextInput label, .stTextArea label {
+            color: #5b7389 !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_header(dataset: pd.DataFrame) -> None:
+    """
+    Render the app heading and top-level stats.
+    """
+    st.markdown(
+        f"""
+        <div class="page-header">
+            <h1>{APP_TITLE}</h1>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    spam_count = int((dataset["label"] == "spam").sum())
+    legit_count = int((dataset["label"] == "legitimate").sum())
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        render_stat("Messages", str(len(dataset)))
+    with col2:
+        render_stat("Scam/Spam Samples", str(spam_count))
+    with col3:
+        render_stat("Legitimate Samples", str(legit_count))
+
+def render_sidebar() -> None:
+    """
+    Keep the sidebar minimal and informational only.
+    """
+    dataset = load_dataset()
+    spam_count = int((dataset["label"] == "spam").sum())
+    legit_count = int((dataset["label"] == "legitimate").sum())
+
+    st.sidebar.markdown("### About")
+    st.sidebar.caption("This app checks whether a pasted message or extracted webpage text looks like Scam/Spam or Legitimate.")
+
+    st.sidebar.markdown("### Model Guide")
+    st.sidebar.caption("Naive Bayes: simple probability baseline.")
+    st.sidebar.caption("SVM: stronger at separating harder cases.")
+    st.sidebar.caption("Logistic Regression: useful linear comparison model.")
+
+    st.sidebar.markdown("### Quick Tips")
+    st.sidebar.caption("Paste SMS, email text, or suspicious short messages into Message Analysis.")
+    st.sidebar.caption("Use URL Analysis only for pages where readable text can actually be extracted.")
+
+    st.sidebar.markdown("### Dataset Summary")
+    st.sidebar.caption(f"Total samples: {len(dataset)}")
+    st.sidebar.caption(f"Scam/Spam samples: {spam_count}")
+    st.sidebar.caption(f"Legitimate samples: {legit_count}")
+
+
+def render_model_picker(label: str, key: str) -> str:
+    """
+    Render a dropdown model selector.
+    """
+    return st.selectbox(label, MODEL_NAMES, key=key)
+
+
+def render_stat(label: str, value: str) -> None:
+    """
+    Render a compact stat card.
+    """
+    st.markdown(
+        f"""
+        <div class="mini-stat">
+            <div class="mini-stat-label">{label}</div>
+            <div class="mini-stat-value">{value}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_message_page(models: dict[str, Any]) -> None:
+    """
+    Render the text message analysis page.
+    """
+    left, right = st.columns([1.35, 0.65], gap="large")
+
+    with left:
+        st.subheader("Analyze a Message")
+        st.write("Paste a suspicious message, SMS, or email text below.")
+        message = st.text_area(
+            "Message",
+            height=190,
+            placeholder="Example: Your bank account has been suspended. Verify now using this secure link...",
+            label_visibility="collapsed",
+        )
+        model_choice = render_model_picker("Choose a model", "message_model")
+        analyze = st.button("Analyze", use_container_width=True, type="primary")
+
+    with right:
+        st.subheader("Before You Start")
+        st.markdown(
+            """
+            <div class="soft-note">
+                Choose one model, paste the message, then click Analyze.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.caption("The app will clean the text, convert it into TF-IDF features, and then classify it.")
+
+    if analyze:
+        if not message.strip():
+            st.warning("Please enter a message before clicking Analyze.")
+            return
+
+        prediction, confidence = predict_text(models[model_choice], message)
+
+        st.markdown("### Result")
+        result_col, meta_col = st.columns([1.0, 0.9], gap="large")
+        with result_col:
+            if prediction == "Scam/Spam":
+                st.error(f"Prediction: {prediction}")
+            else:
+                st.success(f"Prediction: {prediction}")
+        with meta_col:
+            st.metric("Confidence", f"{confidence:.2%}")
+            st.caption(f"Model used: {model_choice}")
+
+
+def render_url_page(models: dict[str, Any]) -> None:
+    """
+    Render the webpage analysis page.
+    """
+    st.subheader("Analyze Suspicious Web Content")
+    st.write("Enter a URL and the app will extract readable page text before classifying it.")
+    url = st.text_input("URL", placeholder="https://example.com", label_visibility="collapsed")
+    model_choice = render_model_picker("Choose a model for URL analysis", "url_model")
+    analyze = st.button("Analyze URL", use_container_width=True, type="primary")
+
+    if analyze:
+        if not url.strip():
+            st.warning("Please enter a URL before clicking Analyze URL.")
+            return
+
+        try:
+            extracted_text = extract_text_from_url(url)
+            prediction, confidence = predict_text(models[model_choice], extracted_text)
+
+            preview_col, result_col = st.columns([1.25, 0.75], gap="large")
+            with preview_col:
+                st.subheader("Extracted Text Preview")
+                preview = extracted_text[:900] + ("..." if len(extracted_text) > 900 else "")
+                st.code(preview, language=None)
+
+            with result_col:
+                st.subheader("Prediction")
+                if prediction == "Scam/Spam":
+                    st.error(f"Prediction: {prediction}")
+                else:
+                    st.success(f"Prediction: {prediction}")
+                st.metric("Confidence", f"{confidence:.2%}")
+                st.caption(f"Model used: {model_choice}")
+        except Exception as error:
+            st.warning("The app could not extract readable content from that URL. Try another page or check the link.")
+            st.caption(f"Technical detail: {error}")
+
+
+def render_comparison_page(metrics_df: pd.DataFrame) -> None:
+    """
+    Render the model comparison table.
+    """
+    st.subheader("Model Comparison")
+    st.write("These scores come from the current train/test split and help compare the three member-owned models.")
+
+    formatted_df = metrics_df.copy()
+    for column in ["Accuracy", "Precision", "Recall", "F1 Score"]:
+        formatted_df[column] = formatted_df[column].map(lambda value: f"{value:.2%}")
+
+    st.dataframe(formatted_df, use_container_width=True, hide_index=True)
+
+
+def render_dataset_page(dataset: pd.DataFrame) -> None:
+    """
+    Render a preview of the training data.
+    """
+    st.subheader("Dataset Preview")
+    st.write("Use this page during demo or report writing to show the training examples used by the app.")
+    st.dataframe(dataset[["label", "text"]], use_container_width=True, hide_index=True)

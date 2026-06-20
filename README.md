@@ -1,6 +1,17 @@
 # AI-Powered Scam Message and Suspicious Web Content Detection Using NLP
 
-This is a simple Streamlit prototype for detecting whether a text message or web page content looks like scam/spam or legitimate content.
+This project is a Streamlit-based NLP prototype for classifying text as `Scam/Spam` or `Legitimate`.
+It supports pasted messages and extracted webpage content, and compares multiple classic NLP models.
+
+## Current Project Status
+
+This project has already been refactored into a modular structure.
+
+Important:
+- `app.py` is now only a small Streamlit entry point
+- the main logic is inside the `src/` folder
+- older files such as `src/preprocessing.py`, `src/train.py`, `src/evaluate.py`, and `src/predict.py` are no longer part of the current structure
+- if those old filenames are still open in VS Code tabs, close them and reopen the current files from the Explorer
 
 ## Features
 
@@ -10,50 +21,66 @@ This is a simple Streamlit prototype for detecting whether a text message or web
   - Support Vector Machine (SVM)
   - Logistic Regression
 - TF-IDF feature extraction
-- Basic text preprocessing:
+- Basic preprocessing:
   - lowercase
   - remove punctuation
   - remove special characters
+  - remove extra spaces
 - Message analysis page:
   - paste a message
   - choose a model
-  - click **Analyze**
+  - click `Analyze`
   - view prediction and confidence
 - URL analysis page:
   - enter a URL
-  - extract page text with `requests` and `BeautifulSoup`
-  - run scam/spam detection on the extracted text
+  - extract visible page text with `requests` and `BeautifulSoup`
+  - classify extracted text
   - show a friendly error if extraction fails
-- Model comparison section:
+- Model comparison page:
   - Accuracy
   - Precision
   - Recall
   - F1 Score
+- Dataset preview page
 
-## Project Files
+## Latest Structure
 
-- [`app.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\app.py): main Streamlit app
+- [`app.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\app.py): small app entry point
 - [`requirements.txt`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\requirements.txt): Python dependencies
-- [`data/raw/sms_spam_demo.csv`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\data\raw\sms_spam_demo.csv): small demo dataset
+- [`data/raw/sms_spam_demo.csv`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\data\raw\sms_spam_demo.csv): demo dataset
+- [`src/constants.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\constants.py): shared paths, app title, model names
+- [`src/text_processing.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\text_processing.py): text cleaning logic
+- [`src/data_loader.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\data_loader.py): dataset loading
+- [`src/modeling.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\modeling.py): model training, evaluation, prediction
+- [`src/web_tools.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\web_tools.py): webpage extraction helpers
+- [`src/ui.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\ui.py): Streamlit UI layout and styling
 
 ## How To Run
 
-1. Open this folder in VS Code.
-2. Open the terminal in VS Code.
-3. Install the required packages:
+Open this project folder in VS Code, then run the app from the terminal.
+
+Recommended command on your current machine:
 
 ```powershell
-pip install -r requirements.txt
+C:\Users\User\AppData\Local\Programs\Python\Python313\python.exe -m streamlit run app.py
 ```
 
-4. Run the Streamlit app:
+If you need to install the dependencies first:
 
 ```powershell
-streamlit run app.py
+C:\Users\User\AppData\Local\Programs\Python\Python313\python.exe -m pip install -r requirements.txt
+```
+
+If your `python` command already points to the correct installation, this also works:
+
+```powershell
+python -m pip install -r requirements.txt
+python -m streamlit run app.py
 ```
 
 ## Notes
 
-- The dataset included here is a small demo dataset so the prototype can work quickly.
-- You can later replace it with a larger public SMS spam dataset without changing the app structure.
-- The code is written simply and includes comments so it is easier to explain during your presentation.
+- The included dataset is a small demo dataset so the prototype can run quickly.
+- You can later replace it with a larger public dataset without changing the overall app structure.
+- The SVM setup now uses a calibrated linear classifier so the app can still display confidence scores cleanly.
+- The UI has been redesigned and the logic has been separated into modules to make the code easier to explain in your assignment and presentation.
