@@ -111,3 +111,42 @@ python -m streamlit run app.py
 - The UI has already been refactored into a cleaner single-screen tab layout.
 - SVM uses a calibrated linear classifier so the app can still show confidence scores.
 - Old files such as `src/preprocessing.py`, `src/train.py`, `src/evaluate.py`, and `src/predict.py` are no longer part of the current structure.
+
+## Extra Ideas For Future Enhancement
+
+- `Risk factor breakdown`
+  - show suspicious keyword groups such as urgency, reward, payment, account, or verification language
+
+- `Scam risk level`
+  - show a simple Low / Medium / High risk indicator in addition to the raw prediction
+
+- `Highlight suspicious words`
+  - visually point out the words or terms that most influenced the prediction
+
+- `Compare all models on the same message`
+  - show how Naive Bayes, SVM, and Logistic Regression each classify the same input
+
+- `Batch analysis mode`
+  - allow users to paste multiple messages and classify them all in one run
+
+- `URL warning heuristics`
+  - inspect the URL structure itself for suspicious patterns before or alongside webpage text analysis
+
+- `Explanation by model`
+  - let each model explain its result in a slightly different way based on how that model works
+
+- `Session history`
+  - keep a temporary list of recently analyzed messages, predictions, confidence scores, and selected models
+
+- `Evaluation charts`
+  - add confusion matrices or simple metric charts for model comparison
+
+- `Scam category tagging`
+  - classify likely scam type such as prize scam, account verification scam, loan scam, delivery scam, or general promotional spam
+
+- `OCR image scanning`
+  - allow the user to upload an image
+  - extract text from the image using OCR
+  - send the extracted text into the same NLP classification pipeline
+  - return prediction, confidence, and explanation
+  - useful for scam posters, screenshot scams, fake reward images, and fake banking alerts
