@@ -62,7 +62,7 @@ def apply_theme() -> None:
         }
         .block-container {
             max-width: 980px;
-            padding-top: 1.25rem;
+            padding-top: 3rem;
             padding-bottom: 1.5rem;
         }
         .page-header {
@@ -270,7 +270,7 @@ def render_sidebar() -> None:
     legit_count = int((dataset["label"] == "legitimate").sum())
 
     st.sidebar.markdown("### About")
-    st.sidebar.caption("This app checks whether a pasted message or extracted webpage text looks like Scam/Spam or Legitimate.")
+    st.sidebar.caption("This app checks whether pasted SMS text, email text, or extracted webpage text looks like Scam/Spam or Legitimate.")
 
     st.sidebar.markdown("### Model Guide")
     st.sidebar.caption("Naive Bayes: simple probability baseline.")
@@ -278,7 +278,7 @@ def render_sidebar() -> None:
     st.sidebar.caption("Logistic Regression: useful linear comparison model.")
 
     st.sidebar.markdown("### Quick Tips")
-    st.sidebar.caption("Paste SMS, email text, or suspicious short messages into Message Analysis.")
+    st.sidebar.caption("Paste SMS content, email text, or suspicious short messages into Message Analysis.")
     st.sidebar.caption("Use URL Analysis only for pages where readable text can actually be extracted.")
 
     st.sidebar.markdown("### Dataset Summary")
@@ -317,11 +317,11 @@ def render_message_page(models: dict[str, Any]) -> None:
 
     with top_left:
         st.subheader("Analyze a Message")
-        st.caption("Paste a suspicious message, SMS, or email text below.")
+        st.caption("Paste a suspicious SMS message or email text below.")
         message = st.text_area(
             "Message",
             height=120,
-            placeholder="Example: Your bank account has been suspended. Verify now using this secure link...",
+            placeholder="Example: Your account has been suspended. Verify now using this secure link...",
             label_visibility="collapsed",
         )
         model_choice = render_model_picker("Choose a model", "message_model")

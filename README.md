@@ -1,6 +1,6 @@
 # AI-Powered Scam Message and Suspicious Web Content Detection Using NLP
 
-This project is a Python + Streamlit NLP assignment app that classifies text as `Scam/Spam` or `Legitimate`.
+This project is a Python + Streamlit NLP assignment app that classifies SMS text, email text, and webpage text as `Scam/Spam` or `Legitimate`.
 
 It currently supports:
 - pasted message analysis
@@ -25,7 +25,7 @@ The current preprocessing flow:
 ## App Features
 
 - `Message Analysis`
-  - paste a suspicious message, SMS, or email text
+  - paste suspicious SMS or email text
   - choose a model
   - click `Analyze`
   - view prediction and confidence
@@ -108,6 +108,7 @@ python -m streamlit run app.py
 ## Notes
 
 - The current dataset is still small and should be replaced or expanded later for the final assignment.
+- The current dataset is still small and SMS-heavy, so it should be replaced or expanded later with stronger SMS-and-email coverage for the final assignment.
 - The UI has already been refactored into a cleaner single-screen tab layout.
 - SVM uses a calibrated linear classifier so the app can still show confidence scores.
 - Old files such as `src/preprocessing.py`, `src/train.py`, `src/evaluate.py`, and `src/predict.py` are no longer part of the current structure.

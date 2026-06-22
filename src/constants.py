@@ -12,6 +12,6 @@ MODEL_NAMES = ["Naive Bayes", "SVM", "Logistic Regression"]
 
 APP_TITLE = "AI-Powered Scam Message and Suspicious Web Content Detection Using NLP"
 APP_SUBTITLE = (
-    "A Streamlit prototype that uses TF-IDF with classic NLP models to classify messages "
-    "and webpage text as Scam/Spam or Legitimate."
+    "A Streamlit app that uses TF-IDF with classic NLP models to classify SMS messages, "
+    "email text, and webpage text as Scam/Spam or Legitimate."
 )
