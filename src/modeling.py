@@ -115,14 +115,23 @@ def explain_prediction(model: Any, raw_text: str) -> dict[str, Any]:
         weighted_terms.append((feature_names[index], float(transformed[0, index])))
 
     weighted_terms.sort(key=lambda item: item[1], reverse=True)
-    top_terms = [term for term, _ in weighted_terms[:5]]
+    top_terms = [
+        {"term": term, "score": score}
+        for term, score in weighted_terms[:5]
+    ]
 
     display_label = "Scam/Spam" if prediction == "spam" else "Legitimate"
+    label_reason = (
+        "The model leaned toward Scam/Spam because these terms carried the strongest weight in the input text."
+        if prediction == "spam"
+        else "The model leaned toward Legitimate because the overall wording looked closer to legitimate training examples."
+    )
     return {
         "label": display_label,
         "confidence": confidence,
         "cleaned_text": cleaned,
         "top_terms": top_terms,
+        "label_reason": label_reason,
     }
 
 

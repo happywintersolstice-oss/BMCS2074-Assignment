@@ -146,6 +146,14 @@ def apply_theme() -> None:
             color: #27506f;
             font-size: 0.86rem;
         }
+        .token-score {
+            margin-top: 0.75rem;
+            color: #486276;
+            font-size: 0.92rem;
+        }
+        .token-score strong {
+            color: #1f3d57;
+        }
         div[data-testid="stSidebar"] {
             background: #f7fbff;
             border-right: 1px solid rgba(88, 139, 188, 0.08);
@@ -372,15 +380,27 @@ def render_message_page(models: dict[str, Any]) -> None:
             with explanation_right:
                 st.markdown("**Top TF-IDF terms noticed in this message**")
                 if result["top_terms"]:
-                    chips = "".join(f'<span class="token-chip">{term}</span>' for term in result["top_terms"])
+                    chips = "".join(
+                        f'<span class="token-chip">{item["term"]}</span>'
+                        for item in result["top_terms"]
+                    )
                     st.markdown(chips, unsafe_allow_html=True)
+                    for item in result["top_terms"]:
+                        st.markdown(
+                            f"""
+                            <div class="token-score">
+                                <strong>{item["term"]}</strong>: TF-IDF weight = {item["score"]:.3f}
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
                 else:
                     st.caption("No strong terms were found after preprocessing.")
                 st.markdown(
-                    """
+                    f"""
                     <div class="explanation-list">
-                        The result comes from the cleaned words in the message, their TF-IDF weights,
-                        and the selected model's learned decision pattern.
+                        {result["label_reason"]}
+                        These are the highest-weight words from this input after cleaning, so they had the biggest effect on the model's decision.
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -434,15 +454,27 @@ def render_url_page(models: dict[str, Any]) -> None:
                 st.code(result["cleaned_text"] or "(no usable words after cleaning)", language=None)
                 st.markdown("**Top TF-IDF terms noticed on this page**")
                 if result["top_terms"]:
-                    chips = "".join(f'<span class="token-chip">{term}</span>' for term in result["top_terms"])
+                    chips = "".join(
+                        f'<span class="token-chip">{item["term"]}</span>'
+                        for item in result["top_terms"]
+                    )
                     st.markdown(chips, unsafe_allow_html=True)
+                    for item in result["top_terms"]:
+                        st.markdown(
+                            f"""
+                            <div class="token-score">
+                                <strong>{item["term"]}</strong>: TF-IDF weight = {item["score"]:.3f}
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
                 else:
                     st.caption("No strong terms were found after preprocessing.")
                 st.markdown(
-                    """
+                    f"""
                     <div class="explanation-list">
-                        The result comes from the cleaned webpage text, its TF-IDF weights,
-                        and the selected model's learned decision pattern.
+                        {result["label_reason"]}
+                        These are the highest-weight words from the extracted page text after cleaning, so they had the biggest effect on the model's decision.
                     </div>
                     """,
                     unsafe_allow_html=True,
