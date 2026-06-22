@@ -58,6 +58,16 @@ def train_models() -> tuple[dict[str, Any], pd.DataFrame]:
     x = dataframe["clean_text"].tolist()
     y = dataframe["label"].tolist()
 
+    class_counts = dataframe["label"].value_counts()
+    if len(class_counts) < 2:
+        raise ValueError("Training requires at least two classes in the dataset.")
+
+    if (class_counts < 2).any():
+        raise ValueError("Each class must have at least 2 examples for a stratified train/test split.")
+
+    if len(dataframe) < 10:
+        raise ValueError("Dataset is too small for stable model training.")
+
     x_train, x_test, y_train, y_test = train_test_split(
         x,
         y,

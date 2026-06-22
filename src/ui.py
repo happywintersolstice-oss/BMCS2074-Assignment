@@ -10,7 +10,7 @@ import pandas as pd
 import streamlit as st
 
 from src.constants import APP_TITLE, MODEL_NAMES
-from src.data_loader import load_dataset
+from src.data_loader import load_dataset, load_dataset_with_summary
 from src.modeling import explain_prediction, train_models
 from src.web_tools import extract_text_from_url
 
@@ -23,14 +23,14 @@ def render_app() -> None:
 
     try:
         models, metrics_df = train_models()
-        dataset = load_dataset()
+        dataset, dataset_summary = load_dataset_with_summary()
     except Exception as error:
         st.error("The app could not start because dataset loading or model setup failed.")
         st.code(str(error))
         st.stop()
 
     render_header(dataset)
-    render_sidebar()
+    render_sidebar(dataset_summary)
 
     message_tab, url_tab, comparison_tab, dataset_tab = st.tabs(
         ["Message Analysis", "URL Analysis", "Model Comparison", "Dataset Preview"]
@@ -261,14 +261,10 @@ def render_header(dataset: pd.DataFrame) -> None:
     with col3:
         render_stat("Legitimate Samples", str(legit_count))
 
-def render_sidebar() -> None:
+def render_sidebar(dataset_summary: dict[str, int]) -> None:
     """
     Keep the sidebar minimal and informational only.
     """
-    dataset = load_dataset()
-    spam_count = int((dataset["label"] == "spam").sum())
-    legit_count = int((dataset["label"] == "legitimate").sum())
-
     st.sidebar.markdown("### About")
     st.sidebar.caption("This app checks whether pasted SMS text, email text, or extracted webpage text looks like Scam/Spam or Legitimate.")
 
@@ -282,9 +278,12 @@ def render_sidebar() -> None:
     st.sidebar.caption("Use URL Analysis only for pages where readable text can actually be extracted.")
 
     st.sidebar.markdown("### Dataset Summary")
-    st.sidebar.caption(f"Total samples: {len(dataset)}")
-    st.sidebar.caption(f"Scam/Spam samples: {spam_count}")
-    st.sidebar.caption(f"Legitimate samples: {legit_count}")
+    st.sidebar.caption(f"Original rows: {dataset_summary['original_rows']}")
+    st.sidebar.caption(f"Final usable rows: {dataset_summary['final_rows']}")
+    st.sidebar.caption(f"Duplicates removed: {dataset_summary['duplicates_removed']}")
+    st.sidebar.caption(f"Scam/Spam samples: {dataset_summary['spam_count']}")
+    st.sidebar.caption(f"Legitimate samples: {dataset_summary['legitimate_count']}")
+    st.sidebar.caption(f"Class imbalance ratio: {dataset_summary['imbalance_ratio']}:1")
 
 
 def render_model_picker(label: str, key: str) -> str:
