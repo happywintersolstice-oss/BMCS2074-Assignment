@@ -1,8 +1,16 @@
 """
 SVM model pipeline and training helpers.
-"""
 
-from __future__ import annotations
+What this file does:
+- builds the SVM text-classification pipeline
+- trains that pipeline
+- returns its evaluation metrics
+
+How it works:
+- TF-IDF converts review text into numbers
+- LinearSVC learns class boundaries between issue categories
+- calibration is added so the app can show confidence scores
+"""
 
 from typing import Any
 
@@ -17,6 +25,7 @@ def build_svm_pipeline() -> Pipeline:
     """
     Build the SVM pipeline with TF-IDF features.
     """
+    # CalibratedClassifierCV wraps LinearSVC so the app can read probabilities later.
     classifier = CalibratedClassifierCV(LinearSVC(random_state=42), cv=3)
     return Pipeline(
         [
@@ -35,6 +44,7 @@ def train_svm(
     """
     Train SVM and return the trained pipeline with metrics.
     """
+    # Train on the shared training split so results stay comparable with the other models.
     pipeline = build_svm_pipeline()
     pipeline.fit(x_train, y_train)
     predictions = pipeline.predict(x_test)
@@ -42,8 +52,8 @@ def train_svm(
     metrics = {
         "Model": "SVM",
         "Accuracy": float(accuracy_score(y_test, predictions)),
-        "Precision": float(precision_score(y_test, predictions, pos_label="spam", zero_division=0)),
-        "Recall": float(recall_score(y_test, predictions, pos_label="spam", zero_division=0)),
-        "F1 Score": float(f1_score(y_test, predictions, pos_label="spam", zero_division=0)),
+        "Precision": float(precision_score(y_test, predictions, average="macro", zero_division=0)),
+        "Recall": float(recall_score(y_test, predictions, average="macro", zero_division=0)),
+        "F1 Score": float(f1_score(y_test, predictions, average="macro", zero_division=0)),
     }
     return "SVM", pipeline, metrics

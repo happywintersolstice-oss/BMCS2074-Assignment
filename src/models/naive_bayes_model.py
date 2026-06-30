@@ -1,8 +1,15 @@
 """
 Naive Bayes model pipeline and training helpers.
-"""
 
-from __future__ import annotations
+What this file does:
+- builds the Naive Bayes text-classification pipeline
+- trains that pipeline
+- returns its evaluation metrics
+
+How it works:
+- TF-IDF converts review text into numbers
+- Multinomial Naive Bayes learns word-probability patterns for each label
+"""
 
 from typing import Any
 
@@ -16,6 +23,7 @@ def build_naive_bayes_pipeline() -> Pipeline:
     """
     Build the Naive Bayes pipeline with shared TF-IDF features.
     """
+    # Put TF-IDF and the classifier into one reusable pipeline object.
     return Pipeline(
         [
             ("tfidf", TfidfVectorizer()),
@@ -33,6 +41,7 @@ def train_naive_bayes(
     """
     Train Naive Bayes and return the trained pipeline with metrics.
     """
+    # Train on the shared training split so results stay comparable with the other models.
     pipeline = build_naive_bayes_pipeline()
     pipeline.fit(x_train, y_train)
     predictions = pipeline.predict(x_test)
@@ -40,8 +49,8 @@ def train_naive_bayes(
     metrics = {
         "Model": "Naive Bayes",
         "Accuracy": float(accuracy_score(y_test, predictions)),
-        "Precision": float(precision_score(y_test, predictions, pos_label="spam", zero_division=0)),
-        "Recall": float(recall_score(y_test, predictions, pos_label="spam", zero_division=0)),
-        "F1 Score": float(f1_score(y_test, predictions, pos_label="spam", zero_division=0)),
+        "Precision": float(precision_score(y_test, predictions, average="macro", zero_division=0)),
+        "Recall": float(recall_score(y_test, predictions, average="macro", zero_division=0)),
+        "F1 Score": float(f1_score(y_test, predictions, average="macro", zero_division=0)),
     }
     return "Naive Bayes", pipeline, metrics

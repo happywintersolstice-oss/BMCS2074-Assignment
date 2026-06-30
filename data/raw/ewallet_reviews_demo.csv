@@ -1,0 +1,31 @@
+label,text,app_name,store_source
+payment_failure,Payment keeps failing at checkout even though my card works on other apps,Touch 'n Go eWallet,Google Play
+payment_failure,Transaction declined three times when I tried to scan and pay at the store,GrabPay,App Store
+payment_failure,I cannot complete any payment because the app says unsuccessful every single time,Boost,Google Play
+payment_failure,The QR payment fails and I have to retry again and again before it goes through,ShopeePay,App Store
+payment_failure,My bill payment was rejected and the merchant said no money was received,Touch 'n Go eWallet,Google Play
+payment_failure,Top up was deducted from bank account but the wallet payment did not complete,GrabPay,App Store
+account_access_issue,I cannot log in after the latest update because the app keeps sending me back to the sign in page,Boost,Google Play
+account_access_issue,My account is locked and customer support still has not helped me unlock it,ShopeePay,App Store
+account_access_issue,OTP never arrives so I cannot access my wallet at all,Touch 'n Go eWallet,Google Play
+account_access_issue,Verification keeps failing even though I uploaded the correct identity card,GrabPay,App Store
+account_access_issue,The app logs me out every time and asks me to verify my number again,Boost,Google Play
+account_access_issue,I reset my password but still cannot get into the account because the login screen freezes,ShopeePay,App Store
+transfer_issue,Bank transfer is always delayed and the money takes hours to appear,Touch 'n Go eWallet,Google Play
+transfer_issue,My transfer failed but the app did not explain whether the money was refunded,GrabPay,App Store
+transfer_issue,Sending money to another user keeps showing processing and never finishes,Boost,Google Play
+transfer_issue,The app transferred the wrong amount and I could not cancel it in time,ShopeePay,App Store
+transfer_issue,DuitNow transfer did not go through and the recipient never received anything,Touch 'n Go eWallet,Google Play
+transfer_issue,I tried to cash out to my bank and the transfer is still pending after one day,GrabPay,App Store
+security_concern,I saw a transaction I did not make and now I do not feel safe using this wallet,Boost,Google Play
+security_concern,The app should have stronger protection because anyone with my phone can open it,Touch 'n Go eWallet,App Store
+security_concern,Why is there no clear security alert when a new device logs into my account,GrabPay,Google Play
+security_concern,I worry about my privacy because the app asks for too many permissions,Boost,App Store
+security_concern,Suspicious transfer happened and support responded too slowly for a financial app,ShopeePay,Google Play
+security_concern,Please add better authentication because I am concerned about unauthorized access,Touch 'n Go eWallet,App Store
+feature_request,Please add dark mode and better spending reports for monthly wallet usage,GrabPay,Google Play
+feature_request,I want a scheduled transfer feature so I do not need to repeat the same payment every week,Boost,App Store
+feature_request,It would help if the app supported more banks for instant withdrawal,ShopeePay,Google Play
+feature_request,Please add fingerprint login and a cleaner dashboard for transaction history,Touch 'n Go eWallet,App Store
+feature_request,Kindly include a way to export my payment history to csv for expense tracking,GrabPay,Google Play
+feature_request,The wallet needs better budgeting tools and customizable notifications,Boost,App Store

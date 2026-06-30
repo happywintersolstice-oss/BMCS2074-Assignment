@@ -1,12 +1,23 @@
-# AI-Powered Scam Message and Suspicious Web Content Detection Using NLP
+# E-Wallet App Review Issue Classification Using NLP
 
-This project is a Python + Streamlit NLP assignment app that classifies SMS text, email text, and webpage text as `Scam/Spam` or `Legitimate`.
+This project is a Python + Streamlit NLP assignment app that classifies **e-wallet app reviews** into operational issue categories.
 
-It currently supports:
-- pasted message analysis
-- webpage text analysis from a URL
-- model comparison
-- dataset preview
+The current label set is:
+- `payment_failure`
+- `account_access_issue`
+- `transfer_issue`
+- `security_concern`
+- `feature_request`
+
+The project is framed around review triage for e-wallet apps such as:
+- Touch 'n Go eWallet
+- GrabPay
+- Boost
+- ShopeePay
+
+## Why This Project
+
+E-wallet providers receive large numbers of customer reviews. Manually reading and sorting them is slow and inconsistent. This project uses NLP text classification to organize those reviews into actionable categories that can help product, support, and operations teams respond faster.
 
 ## Current Scope
 
@@ -24,56 +35,48 @@ The current preprocessing flow:
 
 ## App Features
 
-- `Message Analysis`
-  - paste suspicious SMS or email text
+- `Review Analysis`
+  - paste an e-wallet review, complaint, or feature suggestion
   - choose a model
-  - click `Analyze`
-  - view prediction and confidence
-
-- `URL Analysis`
-  - enter a URL
-  - extract readable webpage text with `requests` and `BeautifulSoup`
-  - classify the extracted text
-  - show a friendly error if extraction fails
+  - click `Analyze Review`
+  - view predicted issue category and confidence
+  - view top TF-IDF terms and a short explanation
 
 - `Model Comparison`
   - Accuracy
-  - Precision
-  - Recall
-  - F1 Score
+  - macro Precision
+  - macro Recall
+  - macro F1 Score
 
 - `Dataset Preview`
-  - view the current dataset rows used by the app
+  - inspect the current labeled review rows used for training
 
 ## Project Structure
 
 - [`app.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\app.py)
   Streamlit entry point
 
-- [`data/raw/sms_spam_demo.csv`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\data\raw\sms_spam_demo.csv)
-  Current dataset file
+- [`data/raw/ewallet_reviews_demo.csv`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\data\raw\ewallet_reviews_demo.csv)
+  Demo e-wallet review dataset used by the app
 
-- [`src/constants.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\constants.py)
-  Shared paths, app title, and model names
+- [`src/ewallet_review_constants.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\ewallet_review_constants.py)
+  Shared paths, labels, app title, and model names
 
-- [`src/text_processing.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\text_processing.py)
-  Text cleaning logic
+- [`src/ewallet_review_text_processing.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\ewallet_review_text_processing.py)
+  Review text cleaning logic
 
-- [`src/data_loader.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\data_loader.py)
-  Dataset loading
+- [`src/ewallet_review_dataset.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\ewallet_review_dataset.py)
+  Dataset loading, label normalization, and dataset cleanup summary
 
-- [`src/modeling.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\modeling.py)
-  Shared training coordinator and prediction flow
+- [`src/ewallet_review_modeling.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\ewallet_review_modeling.py)
+  Shared training coordinator, prediction flow, and explanation logic
 
-- [`src/web_tools.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\web_tools.py)
-  Webpage text extraction helpers
-
-- [`src/ui.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\ui.py)
+- [`src/ewallet_review_ui.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\ewallet_review_ui.py)
   Streamlit layout, styling, and page rendering
 
 ## Model Ownership
 
-Each model now has its own file so each group member can clearly own one model:
+Each model has its own file so each group member can clearly own one model:
 
 - [`src/models/naive_bayes_model.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\models\naive_bayes_model.py)
   Naive Bayes pipeline and training
@@ -84,70 +87,58 @@ Each model now has its own file so each group member can clearly own one model:
 - [`src/models/logistic_regression_model.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\models\logistic_regression_model.py)
   Logistic Regression pipeline and training
 
+## Demo Dataset Notes
+
+The repository currently includes a small **demo dataset** so the app can run immediately. For the final assignment, replace it with your manually labeled dataset of around **300 to 500** reviews collected from multiple e-wallet apps across mixed stores.
+
+Recommended final dataset columns:
+- `text`
+- `label`
+- optional: `app_name`
+- optional: `store_source`
+
+## Labeling Policy
+
+Use one shared label taxonomy across the whole group:
+
+- `payment_failure`
+  - failed payment, declined transaction, checkout not going through
+- `account_access_issue`
+  - login failure, verification issue, locked account, OTP problem
+- `transfer_issue`
+  - transfer delay, bank transfer failure, wrong transfer behavior
+- `security_concern`
+  - suspicious activity, privacy concern, unauthorized access worry
+- `feature_request`
+  - requests for new features or product improvements
+
+If a review matches more than one category, label it by the **main actionable issue mentioned first or most strongly**.
+
 ## How To Run
 
 Install dependencies:
 
 ```powershell
-C:\Users\User\AppData\Local\Programs\Python\Python313\python.exe -m pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 Run the app:
 
 ```powershell
-C:\Users\User\AppData\Local\Programs\Python\Python313\python.exe -m streamlit run app.py
-```
-
-If your `python` command already points to the correct installation, this also works:
-
-```powershell
-python -m pip install -r requirements.txt
 python -m streamlit run app.py
 ```
 
 ## Notes
 
-- The current dataset is still small and should be replaced or expanded later for the final assignment.
-- The current dataset is still small and SMS-heavy, so it should be replaced or expanded later with stronger SMS-and-email coverage for the final assignment.
-- The UI has already been refactored into a cleaner single-screen tab layout.
+- The current dataset is only a demo starter and should be replaced by your group's final manually labeled dataset.
+- All three models should use the **same cleaned dataset** and **same train/test split** for fair comparison.
+- The app now uses multiclass evaluation metrics to fit the review-classification task.
 - SVM uses a calibrated linear classifier so the app can still show confidence scores.
-- Old files such as `src/preprocessing.py`, `src/train.py`, `src/evaluate.py`, and `src/predict.py` are no longer part of the current structure.
 
-## Extra Ideas For Future Enhancement
+## Suggested Final Framing
 
-- `Risk factor breakdown`
-  - show suspicious keyword groups such as urgency, reward, payment, account, or verification language
-
-- `Scam risk level`
-  - show a simple Low / Medium / High risk indicator in addition to the raw prediction
-
-- `Highlight suspicious words`
-  - visually point out the words or terms that most influenced the prediction
-
-- `Compare all models on the same message`
-  - show how Naive Bayes, SVM, and Logistic Regression each classify the same input
-
-- `Batch analysis mode`
-  - allow users to paste multiple messages and classify them all in one run
-
-- `URL warning heuristics`
-  - inspect the URL structure itself for suspicious patterns before or alongside webpage text analysis
-
-- `Explanation by model`
-  - let each model explain its result in a slightly different way based on how that model works
-
-- `Session history`
-  - keep a temporary list of recently analyzed messages, predictions, confidence scores, and selected models
-
-- `Evaluation charts`
-  - add confusion matrices or simple metric charts for model comparison
-
-- `Scam category tagging`
-  - classify likely scam type such as prize scam, account verification scam, loan scam, delivery scam, or general promotional spam
-
-- `OCR image scanning`
-  - allow the user to upload an image
-  - extract text from the image using OCR
-  - send the extracted text into the same NLP classification pipeline
-  - return prediction, confidence, and explanation
-  - useful for scam posters, screenshot scams, fake reward images, and fake banking alerts
+For the report, position the system as helping e-wallet teams:
+- organize review complaints automatically
+- identify recurring payment or transfer issues faster
+- detect account access and security concerns
+- group feature suggestions for product improvement
