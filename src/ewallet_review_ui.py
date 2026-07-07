@@ -396,7 +396,16 @@ def render_comparison_page(metrics_df: pd.DataFrame) -> None:
 
     # Format scores as percentages so they are easier to read in the app.
     formatted_df = metrics_df.copy()
-    for column in ["Accuracy", "Precision", "Recall", "F1 Score"]:
+    for column in [
+        "Accuracy",
+        "Precision",
+        "Recall",
+        "F1 Score",
+        "CV Accuracy",
+        "CV Precision",
+        "CV Recall",
+        "CV F1 Score",
+    ]:
         formatted_df[column] = formatted_df[column].map(lambda value: f"{value:.2%}")
 
     st.dataframe(formatted_df, use_container_width=True, hide_index=True)

@@ -20,6 +20,8 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 from sklearn.pipeline import Pipeline
 from sklearn.svm import LinearSVC
 
+from src.ewallet_review_constants import TFIDF_SETTINGS
+
 
 def build_svm_pipeline() -> Pipeline:
     """
@@ -29,7 +31,7 @@ def build_svm_pipeline() -> Pipeline:
     classifier = CalibratedClassifierCV(LinearSVC(random_state=42), cv=3)
     return Pipeline(
         [
-            ("tfidf", TfidfVectorizer()),
+            ("tfidf", TfidfVectorizer(**TFIDF_SETTINGS)),
             ("classifier", classifier),
         ]
     )

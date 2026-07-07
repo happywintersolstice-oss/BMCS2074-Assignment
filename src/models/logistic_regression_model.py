@@ -18,6 +18,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from sklearn.pipeline import Pipeline
 
+from src.ewallet_review_constants import TFIDF_SETTINGS
+
 
 def build_logistic_regression_pipeline() -> Pipeline:
     """
@@ -26,7 +28,7 @@ def build_logistic_regression_pipeline() -> Pipeline:
     # Put TF-IDF and the classifier into one reusable pipeline object.
     return Pipeline(
         [
-            ("tfidf", TfidfVectorizer()),
+            ("tfidf", TfidfVectorizer(**TFIDF_SETTINGS)),
             ("classifier", LogisticRegression(max_iter=1000, random_state=42)),
         ]
     )

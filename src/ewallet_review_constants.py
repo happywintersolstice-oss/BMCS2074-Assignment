@@ -18,6 +18,13 @@ DATA_PATH = BASE_DIR / "data" / "raw" / "ewallet_reviews_demo.csv"
 
 MODEL_NAMES = ["Naive Bayes", "SVM", "Logistic Regression"]
 
+TFIDF_SETTINGS = {
+    "stop_words": "english",
+    "ngram_range": (1, 2),
+    "min_df": 2,
+    "max_df": 0.95,
+}
+
 # These are the exact machine-friendly labels used for training and prediction.
 LABEL_NAMES = [
     "payment_failure",
@@ -54,6 +61,14 @@ LABEL_COLUMN_CANDIDATES = [
 ]
 
 MAX_TRAIN_TEXT_LENGTH = 2000
+
+TARGET_REVIEWS_PER_CLASS = {
+    "payment_failure": 60,
+    "account_access_issue": 60,
+    "transfer_issue": 60,
+    "security_concern": 60,
+    "feature_request": 60,
+}
 
 APP_TITLE = "E-Wallet App Review Issue Classification Using NLP"
 APP_SUBTITLE = (

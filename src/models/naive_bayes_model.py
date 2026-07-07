@@ -18,6 +18,8 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
 
+from src.ewallet_review_constants import TFIDF_SETTINGS
+
 
 def build_naive_bayes_pipeline() -> Pipeline:
     """
@@ -26,7 +28,7 @@ def build_naive_bayes_pipeline() -> Pipeline:
     # Put TF-IDF and the classifier into one reusable pipeline object.
     return Pipeline(
         [
-            ("tfidf", TfidfVectorizer()),
+            ("tfidf", TfidfVectorizer(**TFIDF_SETTINGS)),
             ("classifier", MultinomialNB()),
         ]
     )

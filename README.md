@@ -91,6 +91,15 @@ Each model has its own file so each group member can clearly own one model:
 
 The repository currently includes a small **demo dataset** so the app can run immediately. For the final assignment, replace it with your manually labeled dataset of around **300 to 500** reviews collected from multiple e-wallet apps across mixed stores.
 
+Recommended minimum class target:
+- `payment_failure`: 60 reviews
+- `account_access_issue`: 60 reviews
+- `transfer_issue`: 60 reviews
+- `security_concern`: 60 reviews
+- `feature_request`: 60 reviews
+
+If your team can collect more, aim for `80 to 100` reviews per class.
+
 Recommended final dataset columns:
 - `text`
 - `label`
@@ -127,6 +136,28 @@ Run the app:
 ```powershell
 python -m streamlit run app.py
 ```
+
+## Collecting Real Reviews
+
+You can start collecting real Google Play reviews with the helper script:
+
+```powershell
+python scripts/collect_google_play_reviews.py --count-per-app 120 --lang en --country my
+```
+
+This creates:
+- `data/raw/ewallet_reviews_collected_raw.csv`
+- `data/raw/ewallet_reviews_for_labeling.csv`
+
+The second file is meant for manual labeling by the team using:
+- `payment_failure`
+- `account_access_issue`
+- `transfer_issue`
+- `security_concern`
+- `feature_request`
+
+Use the guide in:
+- `data/raw/ewallet_review_labeling_guide.md`
 
 ## Notes
 

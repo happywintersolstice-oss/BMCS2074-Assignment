@@ -17,14 +17,22 @@ from typing import Any
 
 import pandas as pd
 import streamlit as st
-from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, f1_score, make_scorer, precision_score, recall_score
+from sklearn.model_selection import StratifiedKFold, cross_validate, train_test_split
 
 from src.ewallet_review_constants import LABEL_DISPLAY_NAMES, MODEL_NAMES
 from src.ewallet_review_dataset import load_ewallet_review_dataset
 from src.ewallet_review_text_processing import preprocess_review_text
-from src.models.logistic_regression_model import train_logistic_regression
-from src.models.naive_bayes_model import train_naive_bayes
-from src.models.svm_model import train_svm
+from src.models.logistic_regression_model import build_logistic_regression_pipeline, train_logistic_regression
+from src.models.naive_bayes_model import build_naive_bayes_pipeline, train_naive_bayes
+from src.models.svm_model import build_svm_pipeline, train_svm
+
+
+MODEL_BUILDERS = {
+    "Naive Bayes": build_naive_bayes_pipeline,
+    "SVM": build_svm_pipeline,
+    "Logistic Regression": build_logistic_regression_pipeline,
+}
 
 
 def train_single_model(
@@ -46,6 +54,41 @@ def train_single_model(
     if model_name not in trainers:
         raise ValueError(f"Unsupported model: {model_name}")
     return trainers[model_name](x_train, x_test, y_train, y_test)
+
+
+def cross_validate_model(model_name: str, x: list[str], y: list[str]) -> dict[str, float]:
+    """
+    Run stratified cross-validation so evaluation is less sensitive to one small split.
+    """
+    if model_name not in MODEL_BUILDERS:
+        raise ValueError(f"Unsupported model: {model_name}")
+
+    class_counts = pd.Series(y).value_counts()
+    cv_splits = min(5, int(class_counts.min()))
+    if cv_splits < 2:
+        raise ValueError("Cross-validation requires at least 2 examples in every class.")
+
+    scoring = {
+        "accuracy": make_scorer(accuracy_score),
+        "precision_macro": make_scorer(precision_score, average="macro", zero_division=0),
+        "recall_macro": make_scorer(recall_score, average="macro", zero_division=0),
+        "f1_macro": make_scorer(f1_score, average="macro", zero_division=0),
+    }
+    splitter = StratifiedKFold(n_splits=cv_splits, shuffle=True, random_state=42)
+    results = cross_validate(
+        MODEL_BUILDERS[model_name](),
+        x,
+        y,
+        cv=splitter,
+        scoring=scoring,
+        n_jobs=1,
+    )
+    return {
+        "CV Accuracy": float(results["test_accuracy"].mean()),
+        "CV Precision": float(results["test_precision_macro"].mean()),
+        "CV Recall": float(results["test_recall_macro"].mean()),
+        "CV F1 Score": float(results["test_f1_macro"].mean()),
+    }
 
 
 @st.cache_resource
@@ -89,6 +132,7 @@ def train_models() -> tuple[dict[str, Any], pd.DataFrame]:
             y_train=y_train,
             y_test=y_test,
         )
+        metrics.update(cross_validate_model(model_name=model_name, x=x, y=y))
         models[trained_name] = pipeline
         metrics_rows.append(metrics)
 
