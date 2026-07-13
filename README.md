@@ -56,8 +56,8 @@ The current preprocessing flow:
 - [`app.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\app.py)
   Streamlit entry point
 
-- [`data/raw/ewallet_reviews_demo.csv`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\data\raw\ewallet_reviews_demo.csv)
-  Demo e-wallet review dataset used by the app
+- `data/raw/ewallet_reviews_demo.csv`
+  Current 10,000-row weak-labeled e-wallet review dataset used by the app
 
 - [`src/ewallet_review_constants.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\ewallet_review_constants.py)
   Shared paths, labels, app title, and model names
@@ -87,9 +87,11 @@ Each model has its own file so each group member can clearly own one model:
 - [`src/models/logistic_regression_model.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\models\logistic_regression_model.py)
   Logistic Regression pipeline and training
 
-## Demo Dataset Notes
+## Dataset Notes
 
-The repository currently includes a small **demo dataset** so the app can run immediately. For the final assignment, replace it with your manually labeled dataset of around **300 to 500** reviews collected from multiple e-wallet apps across mixed stores.
+The app now uses a 10,000-row weak-labeled GCash review dataset stored directly in `ewallet_reviews_demo.csv`. It contains no normalized duplicate reviews and is ASCII-only so emoji cannot remain in the training text.
+
+Because its labels were assigned using conservative keyword rules rather than manual annotation, create a separate human-labeled test set before reporting final model accuracy.
 
 Recommended minimum class target:
 - `payment_failure`: 60 reviews
@@ -161,7 +163,7 @@ Use the guide in:
 
 ## Notes
 
-- The current dataset is only a demo starter and should be replaced by your group's final manually labeled dataset.
+- The current 10,000-row dataset uses weak labels; use a manually labeled holdout set for trustworthy final evaluation.
 - All three models should use the **same cleaned dataset** and **same train/test split** for fair comparison.
 - The app now uses multiclass evaluation metrics to fit the review-classification task.
 - SVM uses a calibrated linear classifier so the app can still show confidence scores.
