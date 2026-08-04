@@ -265,10 +265,15 @@ def render_sidebar(dataset_summary: dict[str, int | float | dict[str, int]]) -> 
     st.sidebar.markdown("### Dataset Summary")
     st.sidebar.caption(f"Original rows: {dataset_summary['original_rows']}")
     st.sidebar.caption(f"Final usable rows: {dataset_summary['final_rows']}")
+    st.sidebar.caption(f"Balanced training rows: {dataset_summary['balanced_rows']}")
     st.sidebar.caption(f"Duplicates removed: {dataset_summary['duplicates_removed']}")
     st.sidebar.caption(f"Imbalance ratio: {dataset_summary['imbalance_ratio']}:1")
+    if dataset_summary["applied_balancing"]:
+        st.sidebar.caption("Training uses balanced class sampling.")
     for label in LABEL_NAMES:
-        st.sidebar.caption(f"{LABEL_DISPLAY_NAMES[label]}: {dataset_summary['label_counts'][label]}")
+        before_count = dataset_summary["label_counts_before_balance"][label]
+        after_count = dataset_summary["label_counts"][label]
+        st.sidebar.caption(f"{LABEL_DISPLAY_NAMES[label]}: {after_count} train rows ({before_count} raw)")
 
 
 def render_model_picker(label: str, key: str) -> str:

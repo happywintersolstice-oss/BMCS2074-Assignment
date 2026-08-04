@@ -34,6 +34,20 @@ MODEL_BUILDERS = {
     "Logistic Regression": build_logistic_regression_pipeline,
 }
 
+MODEL_TRAINERS = {
+    "Naive Bayes": train_naive_bayes,
+    "SVM": train_svm,
+    "Logistic Regression": train_logistic_regression,
+}
+
+LABEL_REASON_MAP = {
+    "payment_failure": "The model leaned toward Payment Failure because the review contains strong wording about declined transactions, failed checkout, or payment problems.",
+    "account_access_issue": "The model leaned toward Account Access Issue because the review contains strong wording about login trouble, verification problems, or OTP access issues.",
+    "transfer_issue": "The model leaned toward Transfer Issue because the review contains strong wording about sending money, bank transfers, delays, or failed transfer actions.",
+    "security_concern": "The model leaned toward Security Concern because the review contains strong wording about suspicious activity, privacy worries, or account safety concerns.",
+    "feature_request": "The model leaned toward Feature Request because the review contains strong wording asking for improvements, new functions, or missing app features.",
+}
+
 
 def train_single_model(
     model_name: str,
@@ -45,15 +59,9 @@ def train_single_model(
     """
     Train one model through its dedicated module and return its pipeline with metrics.
     """
-    # This lets the shared training flow call the correct model-specific file.
-    trainers = {
-        "Naive Bayes": train_naive_bayes,
-        "SVM": train_svm,
-        "Logistic Regression": train_logistic_regression,
-    }
-    if model_name not in trainers:
+    if model_name not in MODEL_TRAINERS:
         raise ValueError(f"Unsupported model: {model_name}")
-    return trainers[model_name](x_train, x_test, y_train, y_test)
+    return MODEL_TRAINERS[model_name](x_train, x_test, y_train, y_test)
 
 
 def cross_validate_model(model_name: str, x: list[str], y: list[str]) -> dict[str, float]:
@@ -167,19 +175,12 @@ def explain_prediction(model: Any, raw_text: str) -> dict[str, Any]:
     top_terms = [{"term": term, "score": score} for term, score in weighted_terms[:5]]
 
     display_label = LABEL_DISPLAY_NAMES.get(prediction, prediction.replace("_", " ").title())
-    label_reason_map = {
-        "payment_failure": "The model leaned toward Payment Failure because the review contains strong wording about declined transactions, failed checkout, or payment problems.",
-        "account_access_issue": "The model leaned toward Account Access Issue because the review contains strong wording about login trouble, verification problems, or OTP access issues.",
-        "transfer_issue": "The model leaned toward Transfer Issue because the review contains strong wording about sending money, bank transfers, delays, or failed transfer actions.",
-        "security_concern": "The model leaned toward Security Concern because the review contains strong wording about suspicious activity, privacy worries, or account safety concerns.",
-        "feature_request": "The model leaned toward Feature Request because the review contains strong wording asking for improvements, new functions, or missing app features.",
-    }
     return {
         "label": display_label,
         "confidence": confidence,
         "cleaned_text": cleaned,
         "top_terms": top_terms,
-        "label_reason": label_reason_map.get(
+        "label_reason": LABEL_REASON_MAP.get(
             prediction,
             "The model chose this issue category based on the strongest weighted terms in the cleaned review text.",
         ),

@@ -2,13 +2,14 @@
 Collect real Google Play reviews for selected e-wallet apps.
 
 What this script does:
-- fetches review text from Google Play for a small list of e-wallet apps
+- fetches review text from Google Play for one or more target app lists
 - saves one raw CSV file for archive and traceability
 - saves one label-ready CSV file for your team to annotate manually
 
 How it works:
 - each target app is identified by its Google Play app id
-- the script requests a limited number of newest reviews per app
+- the script can load targets from the built-in list or from a CSV file
+- the script requests a configurable number of reviews per app
 - raw review metadata is preserved for reporting and cleaning
 - a second CSV is created with a blank `label` column for team labeling
 """
@@ -42,6 +43,7 @@ DEFAULT_TARGETS = [
 
 RAW_OUTPUT_PATH = Path("data/raw/ewallet_reviews_collected_raw.csv")
 LABELING_OUTPUT_PATH = Path("data/raw/ewallet_reviews_for_labeling.csv")
+DEFAULT_TARGETS_FILE = Path("data/raw/google_play_targets.csv")
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -54,7 +56,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--count-per-app",
         type=int,
-        default=120,
+        default=500,
         help="Maximum number of reviews to request per app.",
     )
     parser.add_argument(
@@ -77,7 +79,46 @@ def parse_arguments() -> argparse.Namespace:
         default=str(LABELING_OUTPUT_PATH),
         help="Path for the label-ready CSV.",
     )
+    parser.add_argument(
+        "--targets-file",
+        default=str(DEFAULT_TARGETS_FILE),
+        help="Optional CSV file with app_name and app_id columns.",
+    )
+    parser.add_argument(
+        "--sort",
+        choices=["newest", "most_relevant"],
+        default="newest",
+        help="Google Play review ordering to request.",
+    )
     return parser.parse_args()
+
+
+def load_targets(targets_file: str) -> list[AppTarget]:
+    """
+    Load app targets from CSV when provided, otherwise use the built-in defaults.
+    """
+    csv_path = Path(targets_file)
+    if not csv_path.exists():
+        return DEFAULT_TARGETS
+
+    targets_dataframe = pd.read_csv(csv_path)
+    required_columns = {"app_name", "app_id"}
+    missing_columns = required_columns.difference(targets_dataframe.columns)
+    if missing_columns:
+        missing_display = ", ".join(sorted(missing_columns))
+        raise ValueError(f"Targets file is missing required columns: {missing_display}")
+
+    targets: list[AppTarget] = []
+    for row in targets_dataframe.itertuples(index=False):
+        app_name = str(getattr(row, "app_name")).strip()
+        app_id = str(getattr(row, "app_id")).strip()
+        if app_name and app_id:
+            targets.append(AppTarget(app_name=app_name, app_id=app_id))
+
+    if not targets:
+        raise ValueError("Targets file did not contain any valid app rows.")
+
+    return targets
 
 
 def fetch_reviews_for_target(
@@ -85,15 +126,17 @@ def fetch_reviews_for_target(
     count_per_app: int,
     lang: str,
     country: str,
+    sort_mode: str,
 ) -> list[dict[str, object]]:
     """
     Fetch reviews for one app and convert them into plain row dictionaries.
     """
+    selected_sort = Sort.NEWEST if sort_mode == "newest" else Sort.MOST_RELEVANT
     review_items, _ = reviews(
         target.app_id,
         lang=lang,
         country=country,
-        sort=Sort.NEWEST,
+        sort=selected_sort,
         count=count_per_app,
     )
 
@@ -121,6 +164,7 @@ def build_raw_dataframe(
     count_per_app: int,
     lang: str,
     country: str,
+    sort_mode: str,
 ) -> pd.DataFrame:
     """
     Collect reviews from every target app and return one combined DataFrame.
@@ -132,6 +176,7 @@ def build_raw_dataframe(
             count_per_app=count_per_app,
             lang=lang,
             country=country,
+            sort_mode=sort_mode,
         )
         all_rows.extend(target_rows)
 
@@ -155,6 +200,8 @@ def build_labeling_dataframe(raw_dataframe: pd.DataFrame) -> pd.DataFrame:
     ].copy()
     labeling_dataframe.insert(1, "label", "")
     labeling_dataframe["label_notes"] = ""
+    labeling_dataframe["assigned_to"] = ""
+    labeling_dataframe["label_status"] = "unlabeled"
     return labeling_dataframe
 
 
@@ -172,11 +219,13 @@ def main() -> None:
     Run the full review collection flow.
     """
     arguments = parse_arguments()
+    targets = load_targets(arguments.targets_file)
     raw_dataframe = build_raw_dataframe(
-        targets=DEFAULT_TARGETS,
+        targets=targets,
         count_per_app=arguments.count_per_app,
         lang=arguments.lang,
         country=arguments.country,
+        sort_mode=arguments.sort,
     )
     labeling_dataframe = build_labeling_dataframe(raw_dataframe)
 

@@ -56,8 +56,17 @@ The current preprocessing flow:
 - [`app.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\app.py)
   Streamlit entry point
 
-- `data/raw/ewallet_reviews_demo.csv`
-  Current 10,000-row weak-labeled e-wallet review dataset used by the app
+- `data/raw/ewallet_reviews_final.csv`
+  Current master labeled dataset used as the source for splitting
+
+- `data/splits/ewallet_reviews_training.csv`
+  Training dataset for model development
+
+- `data/splits/ewallet_reviews_testing_manual.csv`
+  Held-out testing dataset for final evaluation
+
+- `data/splits/ewallet_reviews_presentation.csv`
+  Separate presentation/demo dataset
 
 - [`src/ewallet_review_constants.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\ewallet_review_constants.py)
   Shared paths, labels, app title, and model names
@@ -89,9 +98,23 @@ Each model has its own file so each group member can clearly own one model:
 
 ## Dataset Notes
 
-The app now uses a 10,000-row weak-labeled GCash review dataset stored directly in `ewallet_reviews_demo.csv`. It contains no normalized duplicate reviews and is ASCII-only so emoji cannot remain in the training text.
+The project now has one master dataset and three role-based split datasets:
 
-Because its labels were assigned using conservative keyword rules rather than manual annotation, create a separate human-labeled test set before reporting final model accuracy.
+- `data/raw/ewallet_reviews_final.csv`
+  - the current master labeled source file
+- `data/splits/ewallet_reviews_training.csv`
+  - for model training and development
+  - this is now the dataset the app trains from
+- `data/splits/ewallet_reviews_testing_manual.csv`
+  - for held-out testing and report results
+- `data/splits/ewallet_reviews_presentation.csv`
+  - for presentation examples and live demo checks
+
+The master file was created by filtering and relabeling a noisier weak-labeled source with stricter rules so the labels are more reliable.
+
+The current app training flow also balances classes before model fitting so the classifier does not overlearn the larger classes.
+
+Because the current training split is still imbalanced, balancing will temporarily downsample the larger classes to match the smallest class. This keeps evaluation fair, but it also means the current effective training size is smaller than the raw training CSV until more `security_concern` rows are collected.
 
 Recommended minimum class target:
 - `payment_failure`: 60 reviews
@@ -147,11 +170,9 @@ You can start collecting real Google Play reviews with the helper script:
 python scripts/collect_google_play_reviews.py --count-per-app 120 --lang en --country my
 ```
 
-This creates:
-- `data/raw/ewallet_reviews_collected_raw.csv`
-- `data/raw/ewallet_reviews_for_labeling.csv`
+The review collection script can create raw review files for manual labeling when needed.
 
-The second file is meant for manual labeling by the team using:
+The labeling file is meant for manual annotation by the team using:
 - `payment_failure`
 - `account_access_issue`
 - `transfer_issue`
@@ -163,7 +184,7 @@ Use the guide in:
 
 ## Notes
 
-- The current 10,000-row dataset uses weak labels; use a manually labeled holdout set for trustworthy final evaluation.
+- The active dataset is `ewallet_reviews_final.csv`, not the earlier weak-labeled source.
 - All three models should use the **same cleaned dataset** and **same train/test split** for fair comparison.
 - The app now uses multiclass evaluation metrics to fit the review-classification task.
 - SVM uses a calibrated linear classifier so the app can still show confidence scores.

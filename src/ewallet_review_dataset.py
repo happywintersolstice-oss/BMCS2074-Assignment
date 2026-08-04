@@ -18,6 +18,7 @@ How it works:
 import pandas as pd
 
 from src.ewallet_review_constants import (
+    BALANCE_CLASSES_FOR_TRAINING,
     DATA_PATH,
     LABEL_COLUMN_CANDIDATES,
     LABEL_NAMES,
@@ -168,9 +169,30 @@ def load_ewallet_review_dataset_with_summary() -> tuple[pd.DataFrame, dict[str, 
     if (class_counts < 2).any():
         raise ValueError("Each class must have at least 2 rows after cleaning.")
 
+    pre_balance_counts = {label: int(class_counts.get(label, 0)) for label in LABEL_NAMES}
     minority_count = int(class_counts.min())
     majority_count = int(class_counts.max())
     imbalance_ratio = round(majority_count / minority_count, 2) if minority_count else 0.0
+
+    balanced_rows = len(dataframe)
+    balanced_counts = pre_balance_counts.copy()
+    applied_balancing = False
+    if BALANCE_CLASSES_FOR_TRAINING:
+        target_count = minority_count
+        balanced_parts: list[pd.DataFrame] = []
+        for label in LABEL_NAMES:
+            label_rows = dataframe[dataframe["label"] == label]
+            balanced_parts.append(label_rows.sample(n=target_count, random_state=42))
+
+        dataframe = (
+            pd.concat(balanced_parts, ignore_index=True)
+            .sample(frac=1.0, random_state=42)
+            .reset_index(drop=True)
+        )
+        balanced_rows = len(dataframe)
+        balanced_class_counts = dataframe["label"].value_counts()
+        balanced_counts = {label: int(balanced_class_counts.get(label, 0)) for label in LABEL_NAMES}
+        applied_balancing = True
 
     # This summary is shown in the sidebar so users can inspect dataset health.
     summary = {
@@ -180,8 +202,11 @@ def load_ewallet_review_dataset_with_summary() -> tuple[pd.DataFrame, dict[str, 
         "rows_after_text_clean": rows_after_text_clean,
         "rows_after_dedup": rows_after_dedup,
         "final_rows": final_rows,
+        "balanced_rows": balanced_rows,
         "duplicates_removed": rows_after_text_clean - rows_after_dedup,
-        "label_counts": {label: int(class_counts.get(label, 0)) for label in LABEL_NAMES},
+        "label_counts_before_balance": pre_balance_counts,
+        "label_counts": balanced_counts,
+        "applied_balancing": applied_balancing,
         "minority_count": minority_count,
         "majority_count": majority_count,
         "imbalance_ratio": imbalance_ratio,

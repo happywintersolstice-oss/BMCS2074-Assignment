@@ -14,7 +14,13 @@ from pathlib import Path
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_PATH = BASE_DIR / "data" / "raw" / "ewallet_reviews_demo.csv"
+MASTER_DATA_PATH = BASE_DIR / "data" / "raw" / "ewallet_reviews_final.csv"
+TRAINING_DATA_PATH = BASE_DIR / "data" / "splits" / "ewallet_reviews_training.csv"
+TESTING_DATA_PATH = BASE_DIR / "data" / "splits" / "ewallet_reviews_testing_manual.csv"
+PRESENTATION_DATA_PATH = BASE_DIR / "data" / "splits" / "ewallet_reviews_presentation.csv"
+
+# The app should train only on the dedicated training split, not on the master dataset.
+DATA_PATH = TRAINING_DATA_PATH
 
 MODEL_NAMES = ["Naive Bayes", "SVM", "Logistic Regression"]
 
@@ -61,14 +67,7 @@ LABEL_COLUMN_CANDIDATES = [
 ]
 
 MAX_TRAIN_TEXT_LENGTH = 2000
-
-TARGET_REVIEWS_PER_CLASS = {
-    "payment_failure": 60,
-    "account_access_issue": 60,
-    "transfer_issue": 60,
-    "security_concern": 60,
-    "feature_request": 60,
-}
+BALANCE_CLASSES_FOR_TRAINING = True
 
 APP_TITLE = "E-Wallet App Review Issue Classification Using NLP"
 APP_SUBTITLE = (
