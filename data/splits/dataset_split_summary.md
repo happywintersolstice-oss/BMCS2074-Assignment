@@ -4,8 +4,8 @@ This file was generated from `data/raw/ewallet_reviews_final.csv`.
 
 ## Split Sizes
 
-- Source rows: 4197
-- Training rows: 2597
+- Source rows: 5967
+- Training rows: 4367
 - Testing rows: 800
 - Presentation rows: 800
 
@@ -13,31 +13,31 @@ This file was generated from `data/raw/ewallet_reviews_final.csv`.
 
 | Label | Rows |
 |---|---:|
-| `account_access_issue` | 598 |
-| `feature_request` | 665 |
-| `payment_failure` | 410 |
-| `security_concern` | 69 |
-| `transfer_issue` | 855 |
+| `account_access_issue` | 1030 |
+| `feature_request` | 966 |
+| `payment_failure` | 964 |
+| `security_concern` | 158 |
+| `transfer_issue` | 1249 |
 
 ## Testing Label Counts
 
 | Label | Rows |
 |---|---:|
-| `account_access_issue` | 185 |
-| `feature_request` | 205 |
-| `payment_failure` | 126 |
-| `security_concern` | 21 |
-| `transfer_issue` | 263 |
+| `account_access_issue` | 188 |
+| `feature_request` | 177 |
+| `payment_failure` | 177 |
+| `security_concern` | 29 |
+| `transfer_issue` | 229 |
 
 ## Presentation Label Counts
 
 | Label | Rows |
 |---|---:|
-| `account_access_issue` | 184 |
-| `feature_request` | 205 |
-| `payment_failure` | 127 |
-| `security_concern` | 21 |
-| `transfer_issue` | 263 |
+| `account_access_issue` | 189 |
+| `feature_request` | 177 |
+| `payment_failure` | 176 |
+| `security_concern` | 29 |
+| `transfer_issue` | 229 |
 
 ## Intended Usage
 

@@ -2,17 +2,17 @@
 Dataset loading helpers for the e-wallet review classification app.
 
 What this file does:
-- reads the CSV dataset
+- reads the CSV datasets
 - finds the correct text and label columns
 - cleans and validates the rows
-- creates a `clean_text` column for training
+- creates a `clean_text` column for model input
 - returns a small summary for the UI
 
 How it works:
 - raw labels are normalized into the five official project labels
 - invalid, empty, or duplicate rows are removed
 - the cleaned text is produced by the preprocessing module
-- the final dataset is checked to make sure all classes exist
+- training data can be balanced, while testing data stays untouched
 """
 
 import pandas as pd
@@ -23,6 +23,7 @@ from src.ewallet_review_constants import (
     LABEL_COLUMN_CANDIDATES,
     LABEL_NAMES,
     MAX_TRAIN_TEXT_LENGTH,
+    TESTING_DATA_PATH,
     TEXT_COLUMN_CANDIDATES,
 )
 from src.ewallet_review_text_processing import preprocess_review_text
@@ -86,7 +87,7 @@ def detect_column_name(columns: list[str], candidates: list[str], column_role: s
     )
 
 
-def read_review_dataset_file() -> pd.DataFrame:
+def read_review_dataset_file(dataset_path) -> pd.DataFrame:
     """
     Read the dataset with a small set of encoding fallbacks.
     """
@@ -100,7 +101,7 @@ def read_review_dataset_file() -> pd.DataFrame:
 
     for options in read_attempts:
         try:
-            return pd.read_csv(DATA_PATH, **options)
+            return pd.read_csv(dataset_path, **options)
         except UnicodeDecodeError as error:
             last_error = error
 
@@ -109,20 +110,44 @@ def read_review_dataset_file() -> pd.DataFrame:
 
 def load_ewallet_review_dataset() -> pd.DataFrame:
     """
-    Load the local dataset and add a cleaned review text column.
+    Load the training dataset and add a cleaned review text column.
     """
     dataframe, _ = load_ewallet_review_dataset_with_summary()
     return dataframe
 
 
+def load_testing_review_dataset() -> pd.DataFrame:
+    """
+    Load the held-out testing dataset without balancing it.
+    """
+    dataframe, _ = load_review_dataset_with_summary(
+        dataset_path=TESTING_DATA_PATH,
+        apply_balancing=False,
+    )
+    return dataframe
+
+
 def load_ewallet_review_dataset_with_summary() -> tuple[pd.DataFrame, dict[str, int | float | dict[str, int]]]:
     """
-    Load the local dataset, clean it, and return a small summary of the cleanup steps.
+    Load the training dataset, clean it, and return a small summary of the cleanup steps.
     """
-    if not DATA_PATH.exists():
-        raise FileNotFoundError(f"Dataset not found: {DATA_PATH}")
+    return load_review_dataset_with_summary(
+        dataset_path=DATA_PATH,
+        apply_balancing=BALANCE_CLASSES_FOR_TRAINING,
+    )
 
-    dataframe = read_review_dataset_file()
+
+def load_review_dataset_with_summary(
+    dataset_path,
+    apply_balancing: bool,
+) -> tuple[pd.DataFrame, dict[str, int | float | dict[str, int]]]:
+    """
+    Load any project dataset, clean it, and optionally balance it.
+    """
+    if not dataset_path.exists():
+        raise FileNotFoundError(f"Dataset not found: {dataset_path}")
+
+    dataframe = read_review_dataset_file(dataset_path)
     original_rows = len(dataframe)
     column_names = dataframe.columns.tolist()
     text_column = detect_column_name(column_names, TEXT_COLUMN_CANDIDATES, "text")
@@ -177,7 +202,7 @@ def load_ewallet_review_dataset_with_summary() -> tuple[pd.DataFrame, dict[str, 
     balanced_rows = len(dataframe)
     balanced_counts = pre_balance_counts.copy()
     applied_balancing = False
-    if BALANCE_CLASSES_FOR_TRAINING:
+    if apply_balancing:
         target_count = minority_count
         balanced_parts: list[pd.DataFrame] = []
         for label in LABEL_NAMES:

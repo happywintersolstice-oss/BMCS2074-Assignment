@@ -17,7 +17,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 MASTER_DATA_PATH = BASE_DIR / "data" / "raw" / "ewallet_reviews_final.csv"
 TRAINING_DATA_PATH = BASE_DIR / "data" / "splits" / "ewallet_reviews_training.csv"
 TESTING_DATA_PATH = BASE_DIR / "data" / "splits" / "ewallet_reviews_testing_manual.csv"
-PRESENTATION_DATA_PATH = BASE_DIR / "data" / "splits" / "ewallet_reviews_presentation.csv"
 
 # The app should train only on the dedicated training split, not on the master dataset.
 DATA_PATH = TRAINING_DATA_PATH

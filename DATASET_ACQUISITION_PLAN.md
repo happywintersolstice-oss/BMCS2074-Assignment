@@ -4,16 +4,13 @@ This plan is for building a stronger final dataset for:
 
 - model training
 - formal testing
-- presentation/demo testing
 
 ## Final Targets
 
 - training dataset: `10,000` labeled rows
 - testing dataset: `800` labeled rows
-- presentation dataset: `800` labeled rows
-
 Total final labeled target:
-- `11,600` rows
+- `10,800` rows
 
 Recommended raw collection target before labeling:
 - `14,000 to 18,000` raw rows
@@ -59,18 +56,13 @@ C:\Users\User\AppData\Local\Programs\Python\Python313\python.exe scripts/collect
 C:\Users\User\AppData\Local\Programs\Python\Python313\python.exe scripts/collect_google_play_reviews.py --count-per-app 1500 --lang en --country ph --sort newest --raw-output data/raw/ewallet_reviews_raw_ph.csv --labeling-output data/raw/ewallet_reviews_for_labeling_ph.csv
 ```
 
-### 2. Prepare member labeling batches
+### 2. Split the labeling work manually
 
-Use:
-- `scripts/prepare_labeling_batches.py`
+Recommended approach:
 
-Example:
-
-```powershell
-C:\Users\User\AppData\Local\Programs\Python\Python313\python.exe scripts/prepare_labeling_batches.py --input data/raw/ewallet_reviews_for_labeling.csv --members member_1 member_2 member_3
-```
-
-This creates one CSV per member in `data/labeling_batches/`.
+- open the collected labeling CSV
+- divide rows across team members in Google Sheets or Excel
+- keep the same shared label taxonomy for all members
 
 ### 3. Manual labeling
 
@@ -89,20 +81,13 @@ Shared labels:
 - `security_concern`
 - `feature_request`
 
-### 4. Build the combined master dataset
+### 4. Merge approved labeled rows into the project dataset
 
-Use:
-- `scripts/build_master_dataset.py`
+Recommended approach:
 
-Example:
-
-```powershell
-C:\Users\User\AppData\Local\Programs\Python\Python313\python.exe scripts/build_master_dataset.py
-```
-
-This creates:
-
-- `data/raw/ewallet_reviews_master_labeled.csv`
+- keep one clean master labeled CSV as the project source
+- append only reviewed and approved rows
+- remove duplicate `text` + `label` pairs before saving
 
 ### 5. Create final splits
 
@@ -129,7 +114,7 @@ Weekly workflow:
 2. split into member batches
 3. label rows
 4. combine labeled rows
-5. rebuild training/testing/presentation datasets
+5. rebuild training/testing datasets
 6. retrain models
 7. record metric changes
 
@@ -139,6 +124,4 @@ Current available split from existing data:
 
 - training: `2597`
 - testing: `800`
-- presentation: `800`
-
-This is usable now, but it is still below the stronger final target of `10,000 + 800 + 800`.
+This is usable now, but it is still below the stronger final target of `10,000 + 800`.
