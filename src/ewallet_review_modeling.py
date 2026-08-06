@@ -8,8 +8,9 @@ What this file does:
 - explains the prediction using top TF-IDF terms
 
 How it works:
-- the cleaned dataset is split into train and test sets
-- each model trains on the same split for fair comparison
+- the cleaned training dataset is used only for fitting
+- the held-out testing dataset is used only for evaluation
+- each model trains on the same training/testing split files for fair comparison
 - the prediction flow cleans new text, transforms it with TF-IDF, and asks the selected model for a label
 """
 
@@ -17,11 +18,19 @@ from typing import Any
 
 import pandas as pd
 import streamlit as st
-from sklearn.metrics import accuracy_score, f1_score, make_scorer, precision_score, recall_score
-from sklearn.model_selection import StratifiedKFold, cross_validate, train_test_split
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+    make_scorer,
+    precision_score,
+    recall_score,
+)
+from sklearn.model_selection import StratifiedKFold, cross_validate
 
-from src.ewallet_review_constants import LABEL_DISPLAY_NAMES, MODEL_NAMES
-from src.ewallet_review_dataset import load_ewallet_review_dataset
+from src.ewallet_review_constants import LABEL_DISPLAY_NAMES, LABEL_NAMES, MODEL_NAMES
+from src.ewallet_review_dataset import load_ewallet_review_dataset, load_testing_review_dataset
 from src.ewallet_review_text_processing import preprocess_review_text
 from src.models.logistic_regression_model import build_logistic_regression_pipeline, train_logistic_regression
 from src.models.naive_bayes_model import build_naive_bayes_pipeline, train_naive_bayes
@@ -99,37 +108,69 @@ def cross_validate_model(model_name: str, x: list[str], y: list[str]) -> dict[st
     }
 
 
-@st.cache_resource
-def train_models() -> tuple[dict[str, Any], pd.DataFrame]:
+def build_detailed_evaluation(y_true: list[str], y_pred: list[str]) -> dict[str, pd.DataFrame]:
     """
-    Train all supported models and return them with a comparison table.
+    Build per-class metrics and a confusion matrix from the held-out testing results.
     """
-    # Load one shared cleaned dataset so every model is trained fairly.
-    dataframe = load_ewallet_review_dataset()
-    x = dataframe["clean_text"].tolist()
-    y = dataframe["label"].tolist()
+    report = classification_report(
+        y_true,
+        y_pred,
+        labels=LABEL_NAMES,
+        output_dict=True,
+        zero_division=0,
+    )
+    report_rows: list[dict[str, float | int | str]] = []
+    for label in LABEL_NAMES:
+        label_report = report[label]
+        report_rows.append(
+            {
+                "Category": LABEL_DISPLAY_NAMES[label],
+                "Precision": float(label_report["precision"]),
+                "Recall": float(label_report["recall"]),
+                "F1 Score": float(label_report["f1-score"]),
+                "Support": int(label_report["support"]),
+            }
+        )
 
-    class_counts = dataframe["label"].value_counts()
+    confusion = confusion_matrix(y_true, y_pred, labels=LABEL_NAMES)
+    confusion_df = pd.DataFrame(
+        confusion,
+        index=[f"Actual: {LABEL_DISPLAY_NAMES[label]}" for label in LABEL_NAMES],
+        columns=[f"Predicted: {LABEL_DISPLAY_NAMES[label]}" for label in LABEL_NAMES],
+    )
+    return {
+        "per_class_metrics": pd.DataFrame(report_rows),
+        "confusion_matrix": confusion_df,
+    }
+
+
+@st.cache_resource
+def train_models() -> tuple[dict[str, Any], pd.DataFrame, dict[str, dict[str, pd.DataFrame]]]:
+    """
+    Train all supported models and return them with summary and detailed evaluation tables.
+    """
+    # Load separate training and testing datasets so evaluation uses the real held-out test file.
+    training_dataframe = load_ewallet_review_dataset()
+    testing_dataframe = load_testing_review_dataset()
+
+    x_train = training_dataframe["clean_text"].tolist()
+    y_train = training_dataframe["label"].tolist()
+    x_test = testing_dataframe["clean_text"].tolist()
+    y_test = testing_dataframe["label"].tolist()
+
+    class_counts = training_dataframe["label"].value_counts()
     if len(class_counts) < 2:
         raise ValueError("Training requires at least two classes in the dataset.")
 
     if (class_counts < 2).any():
-        raise ValueError("Each class must have at least 2 examples for a stratified train/test split.")
+        raise ValueError("Each training class must have at least 2 examples.")
 
-    if len(dataframe) < 10:
+    if len(training_dataframe) < 10:
         raise ValueError("Dataset is too small for stable model training.")
-
-    # Stratified split keeps the label balance similar in train and test sets.
-    x_train, x_test, y_train, y_test = train_test_split(
-        x,
-        y,
-        test_size=0.30,
-        random_state=42,
-        stratify=y,
-    )
 
     models: dict[str, Any] = {}
     metrics_rows: list[dict[str, float | str]] = []
+    detailed_results: dict[str, dict[str, pd.DataFrame]] = {}
 
     # Train each model on the same data and collect its evaluation scores.
     for model_name in MODEL_NAMES:
@@ -140,11 +181,13 @@ def train_models() -> tuple[dict[str, Any], pd.DataFrame]:
             y_train=y_train,
             y_test=y_test,
         )
-        metrics.update(cross_validate_model(model_name=model_name, x=x, y=y))
+        metrics.update(cross_validate_model(model_name=model_name, x=x_train, y=y_train))
+        predictions = pipeline.predict(x_test)
         models[trained_name] = pipeline
         metrics_rows.append(metrics)
+        detailed_results[trained_name] = build_detailed_evaluation(y_test, predictions)
 
-    return models, pd.DataFrame(metrics_rows)
+    return models, pd.DataFrame(metrics_rows), detailed_results
 
 
 def explain_prediction(model: Any, raw_text: str) -> dict[str, Any]:

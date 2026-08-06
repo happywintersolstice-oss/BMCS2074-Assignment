@@ -31,7 +31,7 @@ def render_app() -> None:
 
     # Load models and dataset once at startup so the rest of the UI can use them.
     try:
-        models, metrics_df = train_models()
+        models, metrics_df, detailed_results = train_models()
         dataset, dataset_summary = load_ewallet_review_dataset_with_summary()
     except Exception as error:
         st.error("The app could not start because dataset loading or model setup failed.")
@@ -49,7 +49,7 @@ def render_app() -> None:
     with analyze_tab:
         render_review_page(models)
     with comparison_tab:
-        render_comparison_page(metrics_df)
+        render_comparison_page(metrics_df, detailed_results)
     with dataset_tab:
         render_dataset_page(dataset)
 
@@ -390,9 +390,12 @@ def render_review_page(models: dict[str, Any]) -> None:
                 )
 
 
-def render_comparison_page(metrics_df: pd.DataFrame) -> None:
+def render_comparison_page(
+    metrics_df: pd.DataFrame,
+    detailed_results: dict[str, dict[str, pd.DataFrame]],
+) -> None:
     """
-    Render the model comparison table.
+    Render the model comparison table and deeper held-out test results.
     """
     st.subheader("Model Comparison")
     st.write(
@@ -414,6 +417,26 @@ def render_comparison_page(metrics_df: pd.DataFrame) -> None:
         formatted_df[column] = formatted_df[column].map(lambda value: f"{value:.2%}")
 
     st.dataframe(formatted_df, use_container_width=True, hide_index=True)
+
+    st.markdown("### Held-Out Test Breakdown")
+    selected_model = st.selectbox(
+        "Choose a model to inspect in detail",
+        MODEL_NAMES,
+        key="comparison_model_picker",
+    )
+    selected_details = detailed_results[selected_model]
+
+    per_class_df = selected_details["per_class_metrics"].copy()
+    for column in ["Precision", "Recall", "F1 Score"]:
+        per_class_df[column] = per_class_df[column].map(lambda value: f"{value:.2%}")
+
+    detail_left, detail_right = st.columns([1.0, 1.1], gap="large")
+    with detail_left:
+        st.markdown("**Per-class results on the testing dataset**")
+        st.dataframe(per_class_df, use_container_width=True, hide_index=True)
+    with detail_right:
+        st.markdown("**Confusion matrix on the testing dataset**")
+        st.dataframe(selected_details["confusion_matrix"], use_container_width=True)
 
 
 def render_dataset_page(dataset: pd.DataFrame) -> None:

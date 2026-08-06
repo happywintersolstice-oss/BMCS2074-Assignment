@@ -17,6 +17,7 @@ from typing import Any
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.svm import LinearSVC
 
@@ -28,7 +29,10 @@ def build_svm_pipeline() -> Pipeline:
     Build the SVM pipeline with TF-IDF features.
     """
     # CalibratedClassifierCV wraps LinearSVC so the app can read probabilities later.
-    classifier = CalibratedClassifierCV(LinearSVC(random_state=42), cv=3)
+    classifier = CalibratedClassifierCV(
+        LinearSVC(class_weight="balanced", random_state=42),
+        cv=3,
+    )
     return Pipeline(
         [
             ("tfidf", TfidfVectorizer(**TFIDF_SETTINGS)),
@@ -46,9 +50,10 @@ def train_svm(
     """
     Train SVM and return the trained pipeline with metrics.
     """
-    # Train on the shared training split so results stay comparable with the other models.
-    pipeline = build_svm_pipeline()
-    pipeline.fit(x_train, y_train)
+    # Tune a small linear SVM search space so the model stays strong but still understandable.
+    class_counts = {label: y_train.count(label) for label in set(y_train)}
+    cv_splits = min(3, min(class_counts.values()))
+    pipeline = tune_svm_pipeline(x_train, y_train, cv_splits)
     predictions = pipeline.predict(x_test)
 
     metrics = {
@@ -59,3 +64,29 @@ def train_svm(
         "F1 Score": float(f1_score(y_test, predictions, average="macro", zero_division=0)),
     }
     return "SVM", pipeline, metrics
+
+
+def tune_svm_pipeline(x_train: list[str], y_train: list[str], cv_splits: int) -> Pipeline:
+    """
+    Tune the linear SVM with a small grid search and return the best pipeline.
+    """
+    pipeline = build_svm_pipeline()
+    if cv_splits < 2:
+        pipeline.fit(x_train, y_train)
+        return pipeline
+
+    parameter_grid = {
+        "tfidf__ngram_range": [(1, 1), (1, 2)],
+        "tfidf__min_df": [1, 2],
+        "classifier__estimator__C": [0.5, 1.0, 2.0],
+    }
+    splitter = StratifiedKFold(n_splits=cv_splits, shuffle=True, random_state=42)
+    search = GridSearchCV(
+        estimator=pipeline,
+        param_grid=parameter_grid,
+        scoring="f1_macro",
+        cv=splitter,
+        n_jobs=1,
+    )
+    search.fit(x_train, y_train)
+    return search.best_estimator_

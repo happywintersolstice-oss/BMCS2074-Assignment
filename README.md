@@ -47,6 +47,9 @@ The current preprocessing flow:
   - macro Precision
   - macro Recall
   - macro F1 Score
+  - cross-validation summary on the training split
+  - per-class held-out test results
+  - confusion matrix for each model
 
 - `Dataset Preview`
   - inspect the current labeled review rows used for training
@@ -64,9 +67,6 @@ The current preprocessing flow:
 
 - `data/splits/ewallet_reviews_testing_manual.csv`
   Held-out testing dataset for final evaluation
-
-- `data/splits/ewallet_reviews_presentation.csv`
-  Separate presentation/demo dataset
 
 - [`src/ewallet_review_constants.py`](C:\Users\User\OneDrive\Documents\BMCS2074 Assignment\src\ewallet_review_constants.py)
   Shared paths, labels, app title, and model names
@@ -98,7 +98,7 @@ Each model has its own file so each group member can clearly own one model:
 
 ## Dataset Notes
 
-The project now has one master dataset and three role-based split datasets:
+The project now has one master dataset and two role-based split datasets:
 
 - `data/raw/ewallet_reviews_final.csv`
   - the current master labeled source file
@@ -107,12 +107,20 @@ The project now has one master dataset and three role-based split datasets:
   - this is now the dataset the app trains from
 - `data/splits/ewallet_reviews_testing_manual.csv`
   - for held-out testing and report results
-- `data/splits/ewallet_reviews_presentation.csv`
-  - for presentation examples and live demo checks
 
 The master file was created by filtering and relabeling a noisier weak-labeled source with stricter rules so the labels are more reliable.
 
-The current app training flow also balances classes before model fitting so the classifier does not overlearn the larger classes.
+The current app training flow works like this:
+
+- `data/raw/ewallet_reviews_final.csv`
+  - master source file
+- `data/splits/ewallet_reviews_training.csv`
+  - the only file used for model fitting and cross-validation
+- `data/splits/ewallet_reviews_testing_manual.csv`
+  - the only file used for final held-out evaluation in the app and report
+
+The app balances classes only inside the training flow before fitting so the classifier does not overlearn the larger classes.
+The held-out testing file is not balanced or mixed back into training.
 
 Because the current training split is still imbalanced, balancing will temporarily downsample the larger classes to match the smallest class. This keeps evaluation fair, but it also means the current effective training size is smaller than the raw training CSV until more `security_concern` rows are collected.
 
@@ -185,9 +193,10 @@ Use the guide in:
 ## Notes
 
 - The active dataset is `ewallet_reviews_final.csv`, not the earlier weak-labeled source.
-- All three models should use the **same cleaned dataset** and **same train/test split** for fair comparison.
+- All three models use the **same training split** for fitting and the **same held-out testing split** for final comparison.
 - The app now uses multiclass evaluation metrics to fit the review-classification task.
 - SVM uses a calibrated linear classifier so the app can still show confidence scores.
+- The comparison page now includes per-class metrics and a confusion matrix, which you can reuse in the report discussion section.
 
 ## Suggested Final Framing
 
