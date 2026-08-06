@@ -1,9 +1,10 @@
 """
-Model training, evaluation, and prediction helpers for the e-wallet review classifier.
+Model training, persistence, evaluation, and prediction helpers for the e-wallet review classifier.
 
 What this file does:
 - trains all three models
-- compares their metrics
+- saves trained models and evaluation results to disk
+- loads saved models back into the app
 - predicts the issue category for a new review
 - explains the prediction using top TF-IDF terms
 
@@ -11,13 +12,15 @@ How it works:
 - the cleaned training dataset is used only for fitting
 - the held-out testing dataset is used only for evaluation
 - each model trains on the same training/testing split files for fair comparison
+- the trained pipelines and result tables are saved as one artifact bundle
 - the prediction flow cleans new text, transforms it with TF-IDF, and asks the selected model for a label
 """
 
+from datetime import datetime
 from typing import Any
 
+import joblib
 import pandas as pd
-import streamlit as st
 from sklearn.metrics import (
     accuracy_score,
     classification_report,
@@ -29,7 +32,14 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import StratifiedKFold, cross_validate
 
-from src.ewallet_review_constants import LABEL_DISPLAY_NAMES, LABEL_NAMES, MODEL_NAMES
+from src.ewallet_review_constants import (
+    LABEL_DISPLAY_NAMES,
+    LABEL_NAMES,
+    MODEL_ARTIFACT_PATH,
+    MODEL_NAMES,
+    TESTING_DATA_PATH,
+    TRAINING_DATA_PATH,
+)
 from src.ewallet_review_dataset import load_ewallet_review_dataset, load_testing_review_dataset
 from src.ewallet_review_text_processing import preprocess_review_text
 from src.models.logistic_regression_model import build_logistic_regression_pipeline, train_logistic_regression
@@ -56,6 +66,33 @@ LABEL_REASON_MAP = {
     "security_concern": "The model leaned toward Security Concern because the review contains strong wording about suspicious activity, privacy worries, or account safety concerns.",
     "feature_request": "The model leaned toward Feature Request because the review contains strong wording asking for improvements, new functions, or missing app features.",
 }
+
+
+def prepare_training_inputs(
+    apply_balancing: bool,
+) -> tuple[pd.DataFrame, pd.DataFrame, list[str], list[str], list[str], list[str]]:
+    """
+    Load and validate the dedicated training and testing datasets.
+    """
+    training_dataframe = load_ewallet_review_dataset(apply_balancing=apply_balancing)
+    testing_dataframe = load_testing_review_dataset()
+
+    x_train = training_dataframe["clean_text"].tolist()
+    y_train = training_dataframe["label"].tolist()
+    x_test = testing_dataframe["clean_text"].tolist()
+    y_test = testing_dataframe["label"].tolist()
+
+    class_counts = training_dataframe["label"].value_counts()
+    if len(class_counts) < 2:
+        raise ValueError("Training requires at least two classes in the dataset.")
+
+    if (class_counts < 2).any():
+        raise ValueError("Each training class must have at least 2 examples.")
+
+    if len(training_dataframe) < 10:
+        raise ValueError("Dataset is too small for stable model training.")
+
+    return training_dataframe, testing_dataframe, x_train, y_train, x_test, y_test
 
 
 def train_single_model(
@@ -144,29 +181,14 @@ def build_detailed_evaluation(y_true: list[str], y_pred: list[str]) -> dict[str,
     }
 
 
-@st.cache_resource
-def train_models() -> tuple[dict[str, Any], pd.DataFrame, dict[str, dict[str, pd.DataFrame]]]:
+def train_models(
+    apply_balancing: bool,
+) -> tuple[dict[str, Any], pd.DataFrame, dict[str, dict[str, pd.DataFrame]]]:
     """
     Train all supported models and return them with summary and detailed evaluation tables.
     """
     # Load separate training and testing datasets so evaluation uses the real held-out test file.
-    training_dataframe = load_ewallet_review_dataset()
-    testing_dataframe = load_testing_review_dataset()
-
-    x_train = training_dataframe["clean_text"].tolist()
-    y_train = training_dataframe["label"].tolist()
-    x_test = testing_dataframe["clean_text"].tolist()
-    y_test = testing_dataframe["label"].tolist()
-
-    class_counts = training_dataframe["label"].value_counts()
-    if len(class_counts) < 2:
-        raise ValueError("Training requires at least two classes in the dataset.")
-
-    if (class_counts < 2).any():
-        raise ValueError("Each training class must have at least 2 examples.")
-
-    if len(training_dataframe) < 10:
-        raise ValueError("Dataset is too small for stable model training.")
+    _, _, x_train, y_train, x_test, y_test = prepare_training_inputs(apply_balancing=apply_balancing)
 
     models: dict[str, Any] = {}
     metrics_rows: list[dict[str, float | str]] = []
@@ -188,6 +210,87 @@ def train_models() -> tuple[dict[str, Any], pd.DataFrame, dict[str, dict[str, pd
         detailed_results[trained_name] = build_detailed_evaluation(y_test, predictions)
 
     return models, pd.DataFrame(metrics_rows), detailed_results
+
+
+def build_training_bundle(apply_balancing: bool) -> dict[str, Any]:
+    """
+    Train all models and package the results with simple metadata for later loading.
+    """
+    training_dataframe, testing_dataframe, _, _, _, _ = prepare_training_inputs(
+        apply_balancing=apply_balancing
+    )
+    models, metrics_df, detailed_results = train_models(apply_balancing=apply_balancing)
+    trained_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    training_mode = "balanced" if apply_balancing else "unbalanced"
+
+    return {
+        "models": models,
+        "metrics_df": metrics_df,
+        "detailed_results": detailed_results,
+        "metadata": {
+            "trained_at": trained_at,
+            "training_rows": int(len(training_dataframe)),
+            "testing_rows": int(len(testing_dataframe)),
+            "training_dataset": TRAINING_DATA_PATH.name,
+            "testing_dataset": TESTING_DATA_PATH.name,
+            "training_mode": training_mode,
+        },
+    }
+
+
+def save_training_bundle(bundle: dict[str, Any]) -> None:
+    """
+    Save the trained model bundle so the app can load it on later runs.
+    """
+    MODEL_ARTIFACT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(bundle, MODEL_ARTIFACT_PATH)
+
+
+def load_saved_training_bundle() -> dict[str, Any] | None:
+    """
+    Load the most recent saved model bundle if one exists.
+    """
+    if not MODEL_ARTIFACT_PATH.exists():
+        return None
+
+    bundle = joblib.load(MODEL_ARTIFACT_PATH)
+    required_keys = {"models", "metrics_df", "detailed_results", "metadata"}
+    if not isinstance(bundle, dict) or not required_keys.issubset(bundle):
+        raise ValueError("Saved model artifact is missing required data.")
+    return bundle
+
+
+def train_and_save_models(apply_balancing: bool) -> dict[str, Any]:
+    """
+    Train the models once and save the full bundle to disk.
+    """
+    bundle = build_training_bundle(apply_balancing=apply_balancing)
+    save_training_bundle(bundle)
+    return bundle
+
+
+def get_saved_model_status(bundle: dict[str, Any] | None) -> dict[str, Any]:
+    """
+    Describe whether saved models exist and whether the datasets are newer than the artifact.
+    """
+    if not MODEL_ARTIFACT_PATH.exists():
+        return {
+            "exists": False,
+            "artifact_modified": None,
+            "is_stale": False,
+            "metadata": {},
+        }
+
+    artifact_modified = datetime.fromtimestamp(MODEL_ARTIFACT_PATH.stat().st_mtime)
+    newest_dataset_time = max(TRAINING_DATA_PATH.stat().st_mtime, TESTING_DATA_PATH.stat().st_mtime)
+    is_stale = MODEL_ARTIFACT_PATH.stat().st_mtime < newest_dataset_time
+
+    return {
+        "exists": True,
+        "artifact_modified": artifact_modified.strftime("%Y-%m-%d %H:%M:%S"),
+        "is_stale": is_stale,
+        "metadata": bundle.get("metadata", {}) if bundle else {},
+    }
 
 
 def explain_prediction(model: Any, raw_text: str) -> dict[str, Any]:
@@ -228,3 +331,44 @@ def explain_prediction(model: Any, raw_text: str) -> dict[str, Any]:
             "The model chose this issue category based on the strongest weighted terms in the cleaned review text.",
         ),
     }
+
+
+def evaluate_model_on_testing_rows(model: Any, testing_dataset: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, float | int]]:
+    """
+    Run one trained model across the full held-out testing dataset and return row-level results.
+    """
+    evaluation_rows = testing_dataset[["label", "text", "clean_text"]].copy().reset_index(drop=True)
+    evaluation_rows.insert(0, "test_row", evaluation_rows.index + 1)
+
+    cleaned_texts = evaluation_rows["clean_text"].tolist()
+    actual_labels = evaluation_rows["label"].tolist()
+    predicted_codes = model.predict(cleaned_texts).tolist()
+
+    confidence_scores = [0.0] * len(evaluation_rows)
+    if hasattr(model, "predict_proba"):
+        probability_rows = model.predict_proba(cleaned_texts)
+        confidence_scores = [float(max(probabilities)) for probabilities in probability_rows]
+
+    results_df = pd.DataFrame(
+        {
+            "Test Row": evaluation_rows["test_row"],
+            "Text": evaluation_rows["text"],
+            "Actual Label": [LABEL_DISPLAY_NAMES[label] for label in actual_labels],
+            "Predicted Label": [
+                LABEL_DISPLAY_NAMES.get(label, str(label).replace("_", " ").title())
+                for label in predicted_codes
+            ],
+            "Confidence": confidence_scores,
+        }
+    )
+    results_df["Correct"] = results_df["Actual Label"] == results_df["Predicted Label"]
+
+    summary = {
+        "rows": int(len(results_df)),
+        "correct": int(results_df["Correct"].sum()),
+        "accuracy": float(accuracy_score(actual_labels, predicted_codes)),
+        "precision": float(precision_score(actual_labels, predicted_codes, average="macro", zero_division=0)),
+        "recall": float(recall_score(actual_labels, predicted_codes, average="macro", zero_division=0)),
+        "f1_score": float(f1_score(actual_labels, predicted_codes, average="macro", zero_division=0)),
+    }
+    return results_df, summary

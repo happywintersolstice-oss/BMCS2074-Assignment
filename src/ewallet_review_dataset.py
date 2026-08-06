@@ -108,11 +108,11 @@ def read_review_dataset_file(dataset_path) -> pd.DataFrame:
     raise ValueError(f"Could not read dataset with supported encodings: {last_error}")
 
 
-def load_ewallet_review_dataset() -> pd.DataFrame:
+def load_ewallet_review_dataset(apply_balancing: bool | None = None) -> pd.DataFrame:
     """
     Load the training dataset and add a cleaned review text column.
     """
-    dataframe, _ = load_ewallet_review_dataset_with_summary()
+    dataframe, _ = load_ewallet_review_dataset_with_summary(apply_balancing=apply_balancing)
     return dataframe
 
 
@@ -127,13 +127,18 @@ def load_testing_review_dataset() -> pd.DataFrame:
     return dataframe
 
 
-def load_ewallet_review_dataset_with_summary() -> tuple[pd.DataFrame, dict[str, int | float | dict[str, int]]]:
+def load_ewallet_review_dataset_with_summary(
+    apply_balancing: bool | None = None,
+) -> tuple[pd.DataFrame, dict[str, int | float | dict[str, int]]]:
     """
     Load the training dataset, clean it, and return a small summary of the cleanup steps.
     """
+    if apply_balancing is None:
+        apply_balancing = BALANCE_CLASSES_FOR_TRAINING
+
     return load_review_dataset_with_summary(
         dataset_path=DATA_PATH,
-        apply_balancing=BALANCE_CLASSES_FOR_TRAINING,
+        apply_balancing=apply_balancing,
     )
 
 
