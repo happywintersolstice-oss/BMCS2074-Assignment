@@ -32,6 +32,11 @@ from src.ewallet_review_dataset import (
     load_testing_review_dataset,
     load_uploaded_review_file,
 )
+from src.ewallet_review_google_play import (
+    collect_google_play_reviews,
+    extract_google_play_app_id,
+    triage_google_play_reviews,
+)
 from src.ewallet_review_modeling import (
     explain_prediction,
     evaluate_model_on_testing_rows,
@@ -122,6 +127,8 @@ def render_app() -> None:
 
     if selected_page == "Review Analysis":
         render_review_page(models)
+    elif selected_page == "Google Play Triage":
+        render_google_play_triage_page(models)
     elif selected_page == "Manual Testing":
         render_manual_testing_page(models, testing_dataset)
     elif selected_page == "Model Comparison":
@@ -466,7 +473,7 @@ def render_sidebar(
     st.sidebar.markdown("### Navigation")
     selected_page = st.sidebar.selectbox(
         "Page",
-        ["Review Analysis", "Manual Testing", "Model Comparison", "Dataset Preview"],
+        ["Review Analysis", "Google Play Triage", "Manual Testing", "Model Comparison", "Dataset Preview"],
         key="page_selector",
     )
 
@@ -658,6 +665,79 @@ def render_review_page(models: dict[str, Any] | None) -> None:
                     """,
                     unsafe_allow_html=True,
                 )
+
+
+def render_google_play_triage_page(models: dict[str, Any] | None) -> None:
+    """Collect current Google Play reviews and triage only negative feedback."""
+    st.subheader("Google Play Review Triage")
+    st.markdown(
+        '<div class="section-intro">Collect recent Google Play reviews for operational triage. Positive and neutral reviews remain unchanged; only 1–2 star reviews are classified into issue categories.</div>',
+        unsafe_allow_html=True,
+    )
+    if models is None:
+        st.info("Train the models first from the sidebar before collecting reviews.")
+        return
+
+    app_reference = st.text_input(
+        "Google Play URL or package id",
+        placeholder="my.com.tngdigital.ewallet or https://play.google.com/store/apps/details?id=...",
+        key="google_play_app_reference",
+    )
+    input_left, input_middle, input_right = st.columns([0.8, 0.8, 1.0], gap="large")
+    with input_left:
+        review_count = st.selectbox("Recent reviews to collect", [25, 50, 100, 200], index=1)
+    with input_middle:
+        google_play_model = render_model_picker("Model for negative reviews", "google_play_model")
+    with input_right:
+        st.markdown("&nbsp;", unsafe_allow_html=True)
+        collect_and_triage = st.button("Collect and Triage Reviews", width="stretch", type="primary")
+
+    if collect_and_triage:
+        try:
+            app_id = extract_google_play_app_id(app_reference)
+            with st.spinner("Collecting recent Google Play reviews and triaging negative feedback..."):
+                collected_reviews = collect_google_play_reviews(app_id, review_count, "en", "my")
+                triage_results, triage_summary = triage_google_play_reviews(
+                    models[google_play_model],
+                    collected_reviews,
+                )
+            st.session_state["google_play_results"] = triage_results
+            st.session_state["google_play_summary"] = triage_summary
+            st.session_state["google_play_app_id"] = app_id
+            st.session_state["google_play_model_used"] = google_play_model
+        except Exception as error:
+            st.error("Google Play reviews could not be collected.")
+            st.code(str(error))
+
+    triage_results = st.session_state.get("google_play_results")
+    triage_summary = st.session_state.get("google_play_summary")
+    if triage_results is not None and triage_summary is not None:
+        st.caption(
+            f"Live results for {st.session_state.get('google_play_app_id')} using "
+            f"{st.session_state.get('google_play_model_used')}. These results do not modify the training dataset."
+        )
+        stat_col1, stat_col2, stat_col3, stat_col4 = st.columns(4)
+        with stat_col1:
+            render_stat("Collected", str(triage_summary["total"]))
+        with stat_col2:
+            render_stat("Negative Classified", str(triage_summary["negative"]))
+        with stat_col3:
+            render_stat("Positive Untouched", str(triage_summary["positive"]))
+        with stat_col4:
+            render_stat("Neutral Untouched", str(triage_summary["neutral"]))
+
+        display_results = triage_results.copy()
+        display_results["Confidence"] = display_results["Confidence"].map(
+            lambda value: f"{value:.2%}" if pd.notna(value) else ""
+        )
+        st.dataframe(display_results, width="stretch", hide_index=True)
+        st.download_button(
+            "Download Google Play Triage CSV",
+            data=triage_results.to_csv(index=False).encode("utf-8"),
+            file_name="google_play_review_triage.csv",
+            mime="text/csv",
+            width="stretch",
+        )
 
 
 def render_manual_testing_page(models: dict[str, Any] | None, testing_dataset: pd.DataFrame) -> None:
