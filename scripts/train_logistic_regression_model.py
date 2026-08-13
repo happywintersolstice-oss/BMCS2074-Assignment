@@ -3,7 +3,6 @@ Train the Logistic Regression model without using Streamlit.
 
 What this file does:
 - loads the current training dataset
-- splits the data into train and test sets
 - trains the Logistic Regression pipeline
 - prints the evaluation metrics in the terminal
 
@@ -30,8 +29,10 @@ def main() -> None:
     Run a manual Logistic Regression training flow and print the results.
     """
     # Load the same cleaned training and testing datasets that the Streamlit app uses.
-    training_dataframe, summary = load_ewallet_review_dataset_with_summary()
     testing_dataframe = load_testing_review_dataset()
+    training_dataframe, summary = load_ewallet_review_dataset_with_summary(
+        excluded_clean_texts=set(testing_dataframe["clean_text"]),
+    )
 
     x_train = training_dataframe["clean_text"].tolist()
     y_train = training_dataframe["label"].tolist()
@@ -54,6 +55,7 @@ def main() -> None:
     print("Dataset summary:")
     print(f"- Original rows in CSV: {summary['original_rows']}")
     print(f"- Final usable rows before balancing: {summary['final_rows']}")
+    print(f"- Training/test overlaps removed: {summary['overlap_rows_removed']}")
     print(f"- Balanced rows used for training: {summary['balanced_rows']}")
     print()
     print("Metrics:")

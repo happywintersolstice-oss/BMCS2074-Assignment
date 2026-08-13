@@ -74,8 +74,11 @@ def prepare_training_inputs(
     """
     Load and validate the dedicated training and testing datasets.
     """
-    training_dataframe = load_ewallet_review_dataset(apply_balancing=apply_balancing)
     testing_dataframe = load_testing_review_dataset()
+    training_dataframe = load_ewallet_review_dataset(
+        apply_balancing=apply_balancing,
+        excluded_clean_texts=set(testing_dataframe["clean_text"]),
+    )
 
     x_train = training_dataframe["clean_text"].tolist()
     y_train = training_dataframe["label"].tolist()
@@ -370,5 +373,33 @@ def evaluate_model_on_testing_rows(model: Any, testing_dataset: pd.DataFrame) ->
         "precision": float(precision_score(actual_labels, predicted_codes, average="macro", zero_division=0)),
         "recall": float(recall_score(actual_labels, predicted_codes, average="macro", zero_division=0)),
         "f1_score": float(f1_score(actual_labels, predicted_codes, average="macro", zero_division=0)),
+    }
+    return results_df, summary
+
+
+def predict_uploaded_review_file(model: Any, uploaded_dataset: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Predict every usable review in a user-uploaded CSV file."""
+    evaluation_rows = uploaded_dataset[["text", "clean_text"]].copy().reset_index(drop=True)
+    predicted_codes = model.predict(evaluation_rows["clean_text"].tolist()).tolist()
+
+    confidence_scores = [0.0] * len(evaluation_rows)
+    if hasattr(model, "predict_proba"):
+        probability_rows = model.predict_proba(evaluation_rows["clean_text"].tolist())
+        confidence_scores = [float(max(probabilities)) for probabilities in probability_rows]
+
+    results_df = pd.DataFrame(
+        {
+            "File Row": evaluation_rows.index + 1,
+            "Text": evaluation_rows["text"],
+            "Predicted Label": [
+                LABEL_DISPLAY_NAMES.get(label, str(label).replace("_", " ").title())
+                for label in predicted_codes
+            ],
+            "Confidence": confidence_scores,
+        }
+    )
+    summary = {
+        "rows": int(len(results_df)),
+        "label_counts": results_df["Predicted Label"].value_counts().to_dict(),
     }
     return results_df, summary

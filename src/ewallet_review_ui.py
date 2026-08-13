@@ -27,12 +27,17 @@ from src.ewallet_review_constants import (
     LABEL_NAMES,
     MODEL_NAMES,
 )
-from src.ewallet_review_dataset import load_ewallet_review_dataset_with_summary, load_testing_review_dataset
+from src.ewallet_review_dataset import (
+    load_ewallet_review_dataset_with_summary,
+    load_testing_review_dataset,
+    load_uploaded_review_file,
+)
 from src.ewallet_review_modeling import (
     explain_prediction,
     evaluate_model_on_testing_rows,
     get_saved_model_status,
     load_saved_training_bundle,
+    predict_uploaded_review_file,
     train_and_save_models,
 )
 
@@ -84,8 +89,11 @@ def render_app() -> None:
 
     # Load the dataset using the currently selected training mode so the summary matches the next train action.
     try:
-        dataset, dataset_summary = load_ewallet_review_dataset_with_summary(apply_balancing=apply_balancing)
         testing_dataset = load_testing_review_dataset()
+        dataset, dataset_summary = load_ewallet_review_dataset_with_summary(
+            apply_balancing=apply_balancing,
+            excluded_clean_texts=set(testing_dataset["clean_text"]),
+        )
     except Exception as error:
         st.error("The app could not start because dataset loading or model setup failed.")
         st.code(str(error))
@@ -523,6 +531,8 @@ def render_sidebar(
         )
         st.caption(f"Rows used in selected mode: {current_mode_rows}")
         st.caption(f"Duplicates removed: {dataset_summary['duplicates_removed']}")
+        if dataset_summary["overlap_rows_removed"]:
+            st.caption(f"Training/test overlaps removed: {dataset_summary['overlap_rows_removed']}")
         st.caption(f"Imbalance ratio: {dataset_summary['imbalance_ratio']}:1")
         for label in LABEL_NAMES:
             before_count = dataset_summary["label_counts_before_balance"][label]
@@ -829,7 +839,7 @@ def render_manual_testing_page(models: dict[str, Any] | None, testing_dataset: p
         show_only_wrong = st.checkbox("Show incorrect predictions only", key="batch_show_only_wrong")
         display_results = stored_results.copy()
         if show_only_wrong:
-            display_results = display_results[display_results["Correct"] == False].reset_index(drop=True)
+            display_results = display_results[~display_results["Correct"]].reset_index(drop=True)
 
         display_results["Confidence"] = display_results["Confidence"].map(lambda value: f"{value:.2%}")
         st.dataframe(display_results, width="stretch", hide_index=True)
@@ -838,6 +848,63 @@ def render_manual_testing_page(models: dict[str, Any] | None, testing_dataset: p
             "Download Full Testing Results CSV",
             data=csv_bytes,
             file_name="manual_testing_results.csv",
+            mime="text/csv",
+            width="stretch",
+        )
+
+    st.markdown("---")
+    st.subheader("Test Your Own CSV File")
+    st.markdown(
+        '<div class="section-intro">Upload a CSV with a review-text column (`text`, `content`, `review`, `comment`, `feedback`, or `body`) to classify every usable row.</div>',
+        unsafe_allow_html=True,
+    )
+    uploaded_file = st.file_uploader("Upload review CSV", type=["csv"], key="uploaded_review_csv")
+    upload_left, upload_right = st.columns([1.0, 1.0], gap="large")
+    with upload_left:
+        upload_model_choice = render_model_picker("Choose a model for uploaded file", "uploaded_file_model")
+    with upload_right:
+        st.markdown("&nbsp;", unsafe_allow_html=True)
+        run_uploaded_file = st.button(
+            "Classify Uploaded File",
+            width="stretch",
+            type="primary",
+            disabled=uploaded_file is None,
+            key="classify_uploaded_file_button",
+        )
+
+    if run_uploaded_file and uploaded_file is not None:
+        try:
+            with st.spinner("Classifying every usable row in the uploaded file..."):
+                uploaded_dataset = load_uploaded_review_file(uploaded_file.getvalue())
+                uploaded_results, uploaded_summary = predict_uploaded_review_file(
+                    models[upload_model_choice],
+                    uploaded_dataset,
+                )
+            st.session_state["uploaded_file_results"] = uploaded_results
+            st.session_state["uploaded_file_summary"] = uploaded_summary
+            st.session_state["uploaded_file_model"] = upload_model_choice
+            st.session_state["uploaded_file_name"] = uploaded_file.name
+        except Exception as error:
+            st.error("The uploaded file could not be classified.")
+            st.code(str(error))
+
+    uploaded_results = st.session_state.get("uploaded_file_results")
+    uploaded_summary = st.session_state.get("uploaded_file_summary")
+    if uploaded_results is not None and uploaded_summary is not None:
+        st.caption(
+            f"Showing {uploaded_summary['rows']} classified rows from "
+            f"{st.session_state.get('uploaded_file_name', 'uploaded file')} using "
+            f"{st.session_state.get('uploaded_file_model', 'the selected model')}."
+        )
+        st.dataframe(
+            uploaded_results.assign(Confidence=uploaded_results["Confidence"].map(lambda value: f"{value:.2%}")),
+            width="stretch",
+            hide_index=True,
+        )
+        st.download_button(
+            "Download Uploaded File Predictions CSV",
+            data=uploaded_results.to_csv(index=False).encode("utf-8"),
+            file_name="uploaded_review_predictions.csv",
             mime="text/csv",
             width="stretch",
         )
