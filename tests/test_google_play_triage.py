@@ -4,7 +4,11 @@ import unittest
 
 import pandas as pd
 
-from src.ewallet_review_google_play import extract_google_play_app_id, triage_google_play_reviews
+from src.ewallet_review_google_play import (
+    extract_google_play_app_id,
+    is_english_review,
+    triage_google_play_reviews,
+)
 
 
 class FakeModel:
@@ -21,6 +25,10 @@ class GooglePlayTriageTests(unittest.TestCase):
     def test_extracts_app_id_from_google_play_url(self) -> None:
         url = "https://play.google.com/store/apps/details?id=my.com.tngdigital.ewallet"
         self.assertEqual(extract_google_play_app_id(url), "my.com.tngdigital.ewallet")
+
+    def test_detects_english_review_text(self) -> None:
+        self.assertTrue(is_english_review("The transfer has been pending for two days."))
+        self.assertFalse(is_english_review("Pemindahan saya masih tertangguh."))
 
     def test_classifies_only_negative_reviews(self) -> None:
         reviews = pd.DataFrame(

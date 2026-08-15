@@ -6,9 +6,22 @@ from urllib.parse import parse_qs, urlparse
 
 import pandas as pd
 from google_play_scraper import Sort, reviews
+from langdetect import DetectorFactory, LangDetectException, detect
 
 from src.ewallet_review_constants import LABEL_DISPLAY_NAMES
 from src.ewallet_review_text_processing import preprocess_review_text
+
+
+# Keep language detection repeatable across runs for the same review text.
+DetectorFactory.seed = 0
+
+
+def is_english_review(text: str) -> bool:
+    """Return whether language detection identifies the review as English."""
+    try:
+        return detect(text) == "en"
+    except LangDetectException:
+        return False
 
 
 def extract_google_play_app_id(app_reference: str) -> str:
@@ -23,7 +36,7 @@ def extract_google_play_app_id(app_reference: str) -> str:
 
 
 def collect_google_play_reviews(app_id: str, count: int, language: str, country: str) -> pd.DataFrame:
-    """Collect recent review text and ratings for one Google Play application."""
+    """Collect and retain only English Google Play reviews for one application."""
     review_items, _ = reviews(app_id, lang=language, country=country, sort=Sort.NEWEST, count=count)
     dataframe = pd.DataFrame(
         {
@@ -37,8 +50,9 @@ def collect_google_play_reviews(app_id: str, count: int, language: str, country:
     if dataframe.empty:
         raise ValueError("No reviews were returned. Check the app id, country, or network connection.")
     dataframe = dataframe[dataframe["Text"] != ""].drop_duplicates(subset=["Review ID", "Text"])
+    dataframe = dataframe[dataframe["Text"].map(is_english_review)]
     if dataframe.empty:
-        raise ValueError("No usable review text was returned.")
+        raise ValueError("No usable English review text was returned.")
     return dataframe.reset_index(drop=True)
 
 

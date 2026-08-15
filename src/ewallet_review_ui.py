@@ -671,7 +671,7 @@ def render_google_play_triage_page(models: dict[str, Any] | None) -> None:
     """Collect current Google Play reviews and triage only negative feedback."""
     st.subheader("Google Play Review Triage")
     st.markdown(
-        '<div class="section-intro">Collect recent Google Play reviews for operational triage. Positive and neutral reviews remain unchanged; only 1–2 star reviews are classified into issue categories.</div>',
+        '<div class="section-intro">Collect recent English-language Google Play reviews for operational triage. Positive and neutral reviews remain unchanged; only 1–2 star reviews are classified into issue categories.</div>',
         unsafe_allow_html=True,
     )
     if models is None:
