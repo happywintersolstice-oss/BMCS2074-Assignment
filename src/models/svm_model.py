@@ -28,6 +28,7 @@ def build_svm_pipeline() -> Pipeline:
     """
     Build the SVM pipeline with TF-IDF features.
     """
+    # Calibration adds probability estimates so the interface can show confidence.
     # CalibratedClassifierCV wraps LinearSVC so the app can read probabilities later.
     classifier = CalibratedClassifierCV(
         LinearSVC(class_weight="balanced", random_state=42),
@@ -50,6 +51,7 @@ def train_svm(
     """
     Train SVM and return the trained pipeline with metrics.
     """
+    # Fit the tuned SVM once and calculate comparable metrics on the test split.
     # Tune a small linear SVM search space so the model stays strong but still understandable.
     class_counts = {label: y_train.count(label) for label in set(y_train)}
     cv_splits = min(3, min(class_counts.values()))
@@ -70,6 +72,7 @@ def tune_svm_pipeline(x_train: list[str], y_train: list[str], cv_splits: int) ->
     """
     Tune the linear SVM with a small grid search and return the best pipeline.
     """
+    # Search only lightweight linear-SVM settings to keep training practical.
     pipeline = build_svm_pipeline()
     if cv_splits < 2:
         pipeline.fit(x_train, y_train)

@@ -61,6 +61,7 @@ def normalize_review_label(value: object) -> str | None:
     """
     Convert different label formats into the shared e-wallet label set.
     """
+    # Return a standard label code so all later steps use one taxonomy.
     if value is None:
         return None
 
@@ -75,6 +76,7 @@ def detect_column_name(columns: list[str], candidates: list[str], column_role: s
     """
     Find a usable dataset column from a list of accepted candidate names.
     """
+    # Match case-insensitively so common CSV heading variations still work.
     # Compare column names in lowercase so matching is more forgiving.
     lowered_to_original = {column.strip().lower(): column for column in columns}
     for candidate in candidates:
@@ -93,6 +95,7 @@ def read_review_dataset_file(dataset_path) -> pd.DataFrame:
     """
     Read the dataset with a small set of encoding fallbacks.
     """
+    # Retry common encodings because externally created CSV files vary.
     # Try a few common encodings because CSV files often vary by source.
     read_attempts = [
         {"encoding": "utf-8"},
@@ -112,6 +115,7 @@ def read_review_dataset_file(dataset_path) -> pd.DataFrame:
 
 def load_uploaded_review_file(file_bytes: bytes) -> pd.DataFrame:
     """Load a user-uploaded CSV containing a supported review-text column."""
+    # Convert uploaded bytes into the same clean text structure used by models.
     if not file_bytes:
         raise ValueError("The uploaded file is empty.")
 
@@ -150,6 +154,7 @@ def load_ewallet_review_dataset(
     """
     Load the training dataset and add a cleaned review text column.
     """
+    # Keep this small wrapper so callers do not need dataset-summary details.
     dataframe, _ = load_ewallet_review_dataset_with_summary(
         apply_balancing=apply_balancing,
         excluded_clean_texts=excluded_clean_texts,
@@ -161,6 +166,7 @@ def load_testing_review_dataset() -> pd.DataFrame:
     """
     Load the held-out testing dataset without balancing it.
     """
+    # Preserve real test-set class proportions for an honest final evaluation.
     dataframe, _ = load_review_dataset_with_summary(
         dataset_path=TESTING_DATA_PATH,
         apply_balancing=False,
@@ -175,6 +181,7 @@ def load_ewallet_review_dataset_with_summary(
     """
     Load the training dataset, clean it, and return a small summary of the cleanup steps.
     """
+    # Apply the default balancing policy only when the caller has not chosen one.
     if apply_balancing is None:
         apply_balancing = BALANCE_CLASSES_FOR_TRAINING
 
@@ -193,6 +200,7 @@ def load_review_dataset_with_summary(
     """
     Load any project dataset, clean it, and optionally balance it.
     """
+    # This is the shared cleaning pipeline behind both training and testing loaders.
     if not dataset_path.exists():
         raise FileNotFoundError(f"Dataset not found: {dataset_path}")
 

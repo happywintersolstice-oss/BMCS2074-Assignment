@@ -21,6 +21,7 @@ def main() -> None:
     """
     Start the Streamlit app.
     """
+    # Configure the browser page once, then hand rendering to the UI module.
     # Set the top-level Streamlit page settings before any UI is drawn.
     st.set_page_config(
         page_title="E-Wallet Review Classifier",

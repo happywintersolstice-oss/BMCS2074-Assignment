@@ -21,8 +21,7 @@ Paste one review, choose a model, and view its predicted issue category, confide
 Enter a Google Play URL or Android package ID to collect recent reviews for an app. This is intended for live operational use:
 
 - 4–5 star reviews are marked **Positive** and left unchanged.
-- 3-star reviews are marked **Neutral** and left unchanged.
-- 1–2 star reviews are marked **Negative** and classified into an issue category.
+- 1–3 star reviews are marked **Needs Review** and classified into an issue category.
 - Results can be downloaded as a CSV for support or product teams.
 
 Collected reviews are **never added automatically to the training dataset**.

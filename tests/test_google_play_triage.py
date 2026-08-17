@@ -35,9 +35,9 @@ class GooglePlayTriageTests(unittest.TestCase):
             {"Rating": [1, 3, 5], "Text": ["payment failed", "okay app", "great app"]}
         )
         results, summary = triage_google_play_reviews(FakeModel(), reviews)
-        self.assertEqual(results["Predicted Issue"].tolist(), ["Payment Failure", "", ""])
-        self.assertEqual(results["Action"].tolist(), ["Classified for follow-up", "Left unchanged", "Left unchanged"])
-        self.assertEqual(summary, {"total": 3, "negative": 1, "positive": 1, "neutral": 1})
+        self.assertEqual(results["Predicted Issue"].tolist(), ["Payment Failure", "Payment Failure", ""])
+        self.assertEqual(results["Action"].tolist(), ["Classified for follow-up", "Classified for follow-up", "Left unchanged"])
+        self.assertEqual(summary, {"total": 3, "needs_review": 2, "positive": 1})
 
 
 if __name__ == "__main__":

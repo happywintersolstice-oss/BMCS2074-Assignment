@@ -47,10 +47,20 @@ from src.ewallet_review_modeling import (
 )
 
 
+GOOGLE_PLAY_APP_OPTIONS = {
+    "Touch 'n Go eWallet": "https://play.google.com/store/apps/details?id=my.com.tngdigital.ewallet",
+    "Grab": "https://play.google.com/store/apps/details?id=com.grabtaxi.passenger",
+    "Boost": "https://play.google.com/store/apps/details?id=my.com.myboost",
+    "Shopee": "https://play.google.com/store/apps/details?id=com.shopee.my",
+    "Custom Google Play app": "",
+}
+
+
 def get_balance_mode_label(apply_balancing: bool) -> str:
     """
     Convert the internal balancing flag into a short UI label.
     """
+    # Keep the stored Boolean value separate from the wording shown to users.
     return "Balanced" if apply_balancing else "Unbalanced"
 
 
@@ -58,6 +68,7 @@ def get_balance_mode_value(mode_label: str) -> bool:
     """
     Convert the selected UI label back into the balancing flag used by training.
     """
+    # Translate the sidebar choice back into the Boolean expected by model code.
     return mode_label == "Balanced"
 
 
@@ -65,6 +76,7 @@ def render_app() -> None:
     """
     Render the full Streamlit application.
     """
+    # Load shared state once, then route the selected navigation page to its renderer.
     apply_theme()
 
     models: dict[str, Any] | None = None
@@ -141,6 +153,7 @@ def apply_theme() -> None:
     """
     Replace the default Streamlit look with a cleaner visual style.
     """
+    # Inject one shared CSS block so each page uses the same visual language.
     # Inject custom CSS so the default Streamlit look matches the project style.
     st.markdown(
         """
@@ -377,6 +390,7 @@ def render_header(
     """
     Render the app heading and top-level stats.
     """
+    # Present the project purpose and the current dataset context before user actions.
     st.markdown(
         f"""
         <div class="page-header">
@@ -415,6 +429,7 @@ def render_app_status(
     """
     Show one compact top-level status strip instead of multiple heavy alerts.
     """
+    # Explain whether models are ready, stale, or still need to be trained.
     if message:
         st.markdown(
             f"""
@@ -470,6 +485,7 @@ def render_sidebar(
     """
     Keep the sidebar minimal and focused on navigation plus training.
     """
+    # Centralize navigation and model-training controls so every page stays uncluttered.
     st.sidebar.markdown("### Navigation")
     selected_page = st.sidebar.selectbox(
         "Page",
@@ -563,6 +579,7 @@ def render_model_picker(label: str, key: str) -> str:
     """
     Render a dropdown model selector.
     """
+    # Reuse the same ordered model list for every prediction and testing control.
     return st.selectbox(label, MODEL_NAMES, key=key)
 
 
@@ -570,6 +587,7 @@ def render_stat(label: str, value: str) -> None:
     """
     Render a compact stat card.
     """
+    # Use one card pattern to make key counts and metrics easy to scan.
     st.markdown(
         f"""
         <div class="mini-stat">
@@ -585,6 +603,7 @@ def render_review_page(models: dict[str, Any] | None) -> None:
     """
     Render the review analysis page.
     """
+    # Collect one user review, then show its model prediction and explanation on demand.
     st.subheader("Review Analysis")
     st.markdown(
         '<div class="section-intro">Paste one review and run a trained model.</div>',
@@ -669,19 +688,27 @@ def render_review_page(models: dict[str, Any] | None) -> None:
 
 def render_google_play_triage_page(models: dict[str, Any] | None) -> None:
     """Collect current Google Play reviews and triage only negative feedback."""
+    # Keep live review collection separate from model training and label only complaints.
     st.subheader("Google Play Review Triage")
     st.markdown(
-        '<div class="section-intro">Collect recent English-language Google Play reviews for operational triage. Positive and neutral reviews remain unchanged; only 1–2 star reviews are classified into issue categories.</div>',
+        '<div class="section-intro">Collect recent English-language Google Play reviews for operational triage. Positive 4–5 star reviews remain unchanged; 1–3 star reviews are classified into issue categories for follow-up.</div>',
         unsafe_allow_html=True,
     )
     if models is None:
         st.info("Train the models first from the sidebar before collecting reviews.")
         return
 
+    selected_google_play_app = st.selectbox(
+        "Choose an e-wallet app",
+        list(GOOGLE_PLAY_APP_OPTIONS),
+        key="google_play_app_choice",
+    )
+    selected_app_reference = GOOGLE_PLAY_APP_OPTIONS[selected_google_play_app]
     app_reference = st.text_input(
         "Google Play URL or package id",
+        value=selected_app_reference,
         placeholder="my.com.tngdigital.ewallet or https://play.google.com/store/apps/details?id=...",
-        key="google_play_app_reference",
+        key=f"google_play_app_reference_{selected_google_play_app}",
     )
     input_left, input_middle, input_right = st.columns([0.8, 0.8, 1.0], gap="large")
     with input_left:
@@ -720,11 +747,14 @@ def render_google_play_triage_page(models: dict[str, Any] | None) -> None:
         with stat_col1:
             render_stat("Collected", str(triage_summary["total"]))
         with stat_col2:
-            render_stat("Negative Classified", str(triage_summary["negative"]))
+            render_stat("Reviews Classified", str(triage_summary["needs_review"]))
         with stat_col3:
             render_stat("Positive Untouched", str(triage_summary["positive"]))
         with stat_col4:
-            render_stat("Neutral Untouched", str(triage_summary["neutral"]))
+            render_stat("Rule", "1–3 Stars")
+
+        if triage_summary["needs_review"] == 0:
+            st.info("No 1–3 star English reviews were found in this collection, so there were no reviews to classify.")
 
         display_results = triage_results.copy()
         display_results["Confidence"] = display_results["Confidence"].map(
@@ -744,6 +774,7 @@ def render_manual_testing_page(models: dict[str, Any] | None, testing_dataset: p
     """
     Render a row-by-row manual testing page using the held-out testing dataset.
     """
+    # Support one-row inspection, full test-set evaluation, and user CSV prediction.
     st.subheader("Manual Testing")
     st.markdown(
         '<div class="section-intro">Use held-out testing rows to inspect one prediction at a time or run the full testing file.</div>',
@@ -994,6 +1025,7 @@ def format_testing_row_option(testing_rows: pd.DataFrame, row_id: int) -> str:
     """
     Build a readable selectbox label for one testing row.
     """
+    # Combine row number, actual category, and a shortened preview for quick selection.
     selected_row = testing_rows.loc[testing_rows["test_row"] == row_id].iloc[0]
     label = LABEL_DISPLAY_NAMES[selected_row["label"]]
     text_preview = str(selected_row["text"]).strip().replace("\n", " ")
@@ -1009,6 +1041,7 @@ def render_comparison_page(
     """
     Render the model comparison table and deeper held-out test results.
     """
+    # Format machine metrics for users, then reveal per-model detail on selection.
     st.subheader("Model Comparison")
     st.markdown(
         '<div class="section-intro">Compare the three trained models using the same held-out testing dataset.</div>',
@@ -1059,6 +1092,7 @@ def render_dataset_page(dataset: pd.DataFrame) -> None:
     """
     Render a preview of the training data.
     """
+    # Show readable labels and original review text without exposing internal features.
     st.subheader("Dataset Preview")
     st.markdown(
         '<div class="section-intro">Preview the labeled training rows currently used by the app.</div>',

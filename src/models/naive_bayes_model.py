@@ -33,6 +33,7 @@ def build_naive_bayes_pipeline() -> Pipeline:
     """
     Build the Naive Bayes pipeline with shared TF-IDF features.
     """
+    # Bundle text vectorization and classification so both steps stay consistent.
     # Naive Bayes benefits from keeping rare issue-specific words in small datasets.
     return Pipeline(
         [
@@ -51,6 +52,7 @@ def train_naive_bayes(
     """
     Train Naive Bayes and return the trained pipeline with metrics.
     """
+    # Tune on training data, then score the selected pipeline only on held-out data.
     # Tune only lightweight Naive Bayes and TF-IDF settings on the training split.
     class_counts = {label: y_train.count(label) for label in set(y_train)}
     cv_splits = min(3, min(class_counts.values()))
@@ -71,6 +73,7 @@ def tune_naive_bayes_pipeline(x_train: list[str], y_train: list[str], cv_splits:
     """
     Tune Naive Bayes with a small grid search and return the best pipeline.
     """
+    # Use cross-validation to select settings without touching the final test set.
     pipeline = build_naive_bayes_pipeline()
     if cv_splits < 2:
         pipeline.fit(x_train, y_train)

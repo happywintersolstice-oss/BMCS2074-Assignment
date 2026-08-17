@@ -20,6 +20,7 @@ def preprocess_review_text(text: str) -> str:
     """
     Clean review text before TF-IDF feature extraction.
     """
+    # Apply the same deterministic cleanup during training and prediction.
     # Lowercasing helps the model treat "Payment" and "payment" as the same word.
     text = text.lower()
     # Remove punctuation so the model focuses on words rather than symbols.

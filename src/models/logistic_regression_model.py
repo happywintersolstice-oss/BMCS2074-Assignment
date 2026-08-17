@@ -26,6 +26,7 @@ def build_logistic_regression_pipeline() -> Pipeline:
     """
     Build the Logistic Regression pipeline with TF-IDF features.
     """
+    # Keep feature extraction and classifier configuration together for reuse.
     # Put TF-IDF and the classifier into one reusable pipeline object.
     return Pipeline(
         [
@@ -52,6 +53,7 @@ def train_logistic_regression(
     """
     Train Logistic Regression and return the trained pipeline with metrics.
     """
+    # Select the best training configuration before measuring unseen-test performance.
     # Tune a small Logistic Regression search space so the model stays suitable for text classification.
     class_counts = {label: y_train.count(label) for label in set(y_train)}
     cv_splits = min(3, min(class_counts.values()))
@@ -76,6 +78,7 @@ def tune_logistic_regression_pipeline(
     """
     Tune Logistic Regression with a small grid search and return the best pipeline.
     """
+    # Try a controlled set of TF-IDF and regularization values using cross-validation.
     pipeline = build_logistic_regression_pipeline()
     if cv_splits < 2:
         pipeline.fit(x_train, y_train)

@@ -74,6 +74,7 @@ def prepare_training_inputs(
     """
     Load and validate the dedicated training and testing datasets.
     """
+    # Load testing first so any shared text can be excluded from model fitting.
     testing_dataframe = load_testing_review_dataset()
     training_dataframe = load_ewallet_review_dataset(
         apply_balancing=apply_balancing,
@@ -108,6 +109,7 @@ def train_single_model(
     """
     Train one model through its dedicated module and return its pipeline with metrics.
     """
+    # Use the model-name lookup to keep all algorithms on the same input contract.
     if model_name not in MODEL_TRAINERS:
         raise ValueError(f"Unsupported model: {model_name}")
     return MODEL_TRAINERS[model_name](x_train, x_test, y_train, y_test)
@@ -117,6 +119,7 @@ def cross_validate_model(model_name: str, x: list[str], y: list[str]) -> dict[st
     """
     Run stratified cross-validation so evaluation is less sensitive to one small split.
     """
+    # Preserve label proportions in each fold, then average each validation metric.
     if model_name not in MODEL_BUILDERS:
         raise ValueError(f"Unsupported model: {model_name}")
 
@@ -152,6 +155,7 @@ def build_detailed_evaluation(y_true: list[str], y_pred: list[str]) -> dict[str,
     """
     Build per-class metrics and a confusion matrix from the held-out testing results.
     """
+    # Convert machine-readable labels into tables that users can interpret in the UI.
     report = classification_report(
         y_true,
         y_pred,
@@ -190,6 +194,7 @@ def train_models(
     """
     Train all supported models and return them with summary and detailed evaluation tables.
     """
+    # Give every algorithm identical inputs so its scores are directly comparable.
     # Load separate training and testing datasets so evaluation uses the real held-out test file.
     _, _, x_train, y_train, x_test, y_test = prepare_training_inputs(apply_balancing=apply_balancing)
 
@@ -219,6 +224,7 @@ def build_training_bundle(apply_balancing: bool) -> dict[str, Any]:
     """
     Train all models and package the results with simple metadata for later loading.
     """
+    # Store models, evaluation tables, and dataset details in one reusable artifact.
     training_dataframe, testing_dataframe, _, _, _, _ = prepare_training_inputs(
         apply_balancing=apply_balancing
     )
@@ -245,6 +251,7 @@ def save_training_bundle(bundle: dict[str, Any]) -> None:
     """
     Save the trained model bundle so the app can load it on later runs.
     """
+    # Ensure the artifact folder exists before writing the joblib bundle.
     MODEL_ARTIFACT_PATH.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(bundle, MODEL_ARTIFACT_PATH)
 
@@ -253,6 +260,7 @@ def load_saved_training_bundle() -> dict[str, Any] | None:
     """
     Load the most recent saved model bundle if one exists.
     """
+    # Validate the loaded structure early so the UI can report a useful error.
     if not MODEL_ARTIFACT_PATH.exists():
         return None
 
@@ -267,6 +275,7 @@ def train_and_save_models(apply_balancing: bool) -> dict[str, Any]:
     """
     Train the models once and save the full bundle to disk.
     """
+    # Keep the button-triggered training flow as one simple reusable operation.
     bundle = build_training_bundle(apply_balancing=apply_balancing)
     save_training_bundle(bundle)
     return bundle
@@ -276,6 +285,7 @@ def get_saved_model_status(bundle: dict[str, Any] | None) -> dict[str, Any]:
     """
     Describe whether saved models exist and whether the datasets are newer than the artifact.
     """
+    # Compare modification times to warn when saved predictions may be outdated.
     if not MODEL_ARTIFACT_PATH.exists():
         return {
             "exists": False,
@@ -300,6 +310,7 @@ def explain_prediction(model: Any, raw_text: str) -> dict[str, Any]:
     """
     Predict the label for a review text and explain it.
     """
+    # Reuse training preprocessing, then expose the strongest TF-IDF input terms.
     # Clean the user input using the same logic used during training.
     cleaned = preprocess_review_text(raw_text)
     prediction = model.predict([cleaned])[0]
@@ -340,6 +351,7 @@ def evaluate_model_on_testing_rows(model: Any, testing_dataset: pd.DataFrame) ->
     """
     Run one trained model across the full held-out testing dataset and return row-level results.
     """
+    # Predict every held-out row and calculate both row-level output and summary metrics.
     evaluation_rows = testing_dataset[["label", "text", "clean_text"]].copy().reset_index(drop=True)
     evaluation_rows.insert(0, "test_row", evaluation_rows.index + 1)
 
@@ -379,6 +391,7 @@ def evaluate_model_on_testing_rows(model: Any, testing_dataset: pd.DataFrame) ->
 
 def predict_uploaded_review_file(model: Any, uploaded_dataset: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Predict every usable review in a user-uploaded CSV file."""
+    # This prediction-only path deliberately never changes the training dataset.
     evaluation_rows = uploaded_dataset[["text", "clean_text"]].copy().reset_index(drop=True)
     predicted_codes = model.predict(evaluation_rows["clean_text"].tolist()).tolist()
 
